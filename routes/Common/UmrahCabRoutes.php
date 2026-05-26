@@ -1,91 +1,47 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\UmrahCab\UcBookingController;
-use App\Http\Controllers\Api\UmrahCab\UcCustomerController;
-use App\Http\Controllers\Api\UmrahCab\UcCompanyController;
-use App\Http\Controllers\Api\UmrahCab\UcServiceController;
-use App\Http\Controllers\Api\UmrahCab\UcFlightController;
-use App\Http\Controllers\Api\UmrahCab\UcTrainController;
-use App\Http\Controllers\Api\UmrahCab\UcInvoiceController;
-use App\Http\Controllers\Api\UmrahCab\UcLedgerController;
-use App\Http\Controllers\Api\UmrahCab\UcPaymentController;
-use App\Http\Controllers\Api\UmrahCab\UcNoticeController;
-use App\Http\Controllers\Api\UmrahCab\UcFleetController;
-use App\Http\Controllers\Api\UmrahCab\UcAuditController;
-use App\Http\Controllers\Api\UmrahCab\UcPriceListController;
-
-use App\Http\Controllers\Api\UmrahCab\UcFollowupController;
 
 Route::prefix('umrahcab')->group(function () {
-    // Bookings
-    Route::get('/bookings/summary', [UcBookingController::class, 'dashboardSummary']);
-    Route::get('/bookings', [UcBookingController::class, 'index']);
-    Route::post('/bookings', [UcBookingController::class, 'store']);
-    Route::put('/bookings/{id}', [UcBookingController::class, 'update']);
-    Route::get('/bookings/status/{code}', [UcBookingController::class, 'getStatus']);
+    // 1. Bookings
+    require __DIR__ . '/UmrahCab/BookingRoutes.php';
 
-    // Customers
-    Route::get('/customers', [UcCustomerController::class, 'index']);
-    Route::post('/customers', [UcCustomerController::class, 'store']);
-    Route::put('/customers/{id}', [UcCustomerController::class, 'update']);
-    Route::get('/customers/{id}', [UcCustomerController::class, 'show']);
+    // 2. Customers
+    require __DIR__ . '/UmrahCab/CustomerRoutes.php';
 
-    // Companies
-    Route::get('/companies', [UcCompanyController::class, 'index']);
-    Route::post('/companies', [UcCompanyController::class, 'store']);
+    // 3. Companies
+    require __DIR__ . '/UmrahCab/CompanyRoutes.php';
 
-    // Services
-    Route::get('/services', [UcServiceController::class, 'index']);
-    Route::post('/services', [UcServiceController::class, 'store']);
-    Route::get('/services/{id}', [UcServiceController::class, 'show']);
-    Route::put('/services/{id}', [UcServiceController::class, 'update']);
-    Route::delete('/services/{id}', [UcServiceController::class, 'destroy']);
+    // 4. Services
+    require __DIR__ . '/UmrahCab/ServiceRoutes.php';
 
-    // Flights
-    Route::get('/flights', [UcFlightController::class, 'index']);
-    Route::post('/flights', [UcFlightController::class, 'store']);
-    Route::get('/flights/{id}', [UcFlightController::class, 'show']);
-    Route::put('/flights/{id}', [UcFlightController::class, 'update']);
-    Route::delete('/flights/{id}', [UcFlightController::class, 'destroy']);
+    // 5. Flights
+    require __DIR__ . '/UmrahCab/FlightRoutes.php';
 
-    // Trains
-    Route::get('/trains', [UcTrainController::class, 'index']);
-    Route::post('/trains', [UcTrainController::class, 'store']);
-    Route::get('/trains/{id}', [UcTrainController::class, 'show']);
-    Route::put('/trains/{id}', [UcTrainController::class, 'update']);
-    Route::delete('/trains/{id}', [UcTrainController::class, 'destroy']);
+    // 6. Trains
+    require __DIR__ . '/UmrahCab/TrainRoutes.php';
 
-    // Invoices
-    Route::get('/invoices', [UcInvoiceController::class, 'index']);
-    Route::post('/invoices', [UcInvoiceController::class, 'store']);
+    // 7. Invoices
+    require __DIR__ . '/UmrahCab/InvoiceRoutes.php';
 
-    // Ledgers
-    Route::get('/ledgers', [UcLedgerController::class, 'index']);
-    Route::post('/ledgers', [UcLedgerController::class, 'store']);
+    // 8. Ledgers
+    require __DIR__ . '/UmrahCab/LedgerRoutes.php';
 
-    // Payments
-    Route::get('/payments', [UcPaymentController::class, 'index']);
-    Route::post('/payments', [UcPaymentController::class, 'store']);
+    // 9. Payments
+    require __DIR__ . '/UmrahCab/PaymentRoutes.php';
 
-    // Notices
-    Route::get('/notices', [UcNoticeController::class, 'index']);
-    Route::post('/notices', [UcNoticeController::class, 'store']);
+    // 10. Notices
+    require __DIR__ . '/UmrahCab/NoticeRoutes.php';
 
-    // Fleet
-    Route::get('/fleet', [UcFleetController::class, 'index']);
-    Route::put('/fleet/{id}', [UcFleetController::class, 'update']);
+    // 11. Fleet
+    require __DIR__ . '/UmrahCab/FleetRoutes.php';
 
-    // Audits
-    Route::get('/audits', [UcAuditController::class, 'index']);
-    Route::post('/audits', [UcAuditController::class, 'store']);
+    // 12. Audits
+    require __DIR__ . '/UmrahCab/AuditRoutes.php';
 
-    // Followups
-    Route::get('/followups', [UcFollowupController::class, 'index']);
-    Route::post('/followups', [UcFollowupController::class, 'store']);
+    // 13. Followups
+    require __DIR__ . '/UmrahCab/FollowupRoutes.php';
 
-    // Price List Matrix
-    Route::get('/price-list', [UcPriceListController::class, 'index']);
-    Route::put('/price-list/{id}', [UcPriceListController::class, 'update']);
-    Route::post('/price-list/bulk', [UcPriceListController::class, 'applyBulkDates']);
+    // 14. Price List Matrix
+    require __DIR__ . '/UmrahCab/PriceListRoutes.php';
 });

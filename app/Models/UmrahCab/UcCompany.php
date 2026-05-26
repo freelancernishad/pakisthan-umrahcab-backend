@@ -19,7 +19,9 @@ class UcCompany extends Model
         'address',
         'invoice',
         'vouchers',
-        'reminders'
+        'reminders',
+        'statement_status',
+        'remarks'
     ];
 
     protected $casts = [

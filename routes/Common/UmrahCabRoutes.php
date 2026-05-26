@@ -44,4 +44,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // 14. Price List Matrix
     require __DIR__ . '/UmrahCab/PriceListRoutes.php';
+
+    // 15. Balance Summary
+    require __DIR__ . '/UmrahCab/BalanceRoutes.php';
 });

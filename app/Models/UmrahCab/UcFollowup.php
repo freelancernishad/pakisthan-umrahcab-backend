@@ -12,6 +12,7 @@ class UcFollowup extends Model
     protected $table = 'uc_followups';
 
     protected $fillable = [
+        'customer_id',
         'custom_id',
         'title',
         'agent',
@@ -20,4 +21,9 @@ class UcFollowup extends Model
         'status',
         'notes'
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(UcCustomer::class, 'customer_id');
+    }
 }

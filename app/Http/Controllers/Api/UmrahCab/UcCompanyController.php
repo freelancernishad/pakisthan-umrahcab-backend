@@ -24,6 +24,8 @@ class UcCompanyController extends Controller
             'invoice' => 'required|boolean',
             'vouchers' => 'nullable|boolean',
             'reminders' => 'nullable|boolean',
+            'statement_status' => 'nullable|string',
+            'remarks' => 'nullable|string',
         ]);
 
         $company = UcCompany::create($validated);
@@ -47,6 +49,8 @@ class UcCompanyController extends Controller
             'invoice' => 'required|boolean',
             'vouchers' => 'nullable|boolean',
             'reminders' => 'nullable|boolean',
+            'statement_status' => 'nullable|string',
+            'remarks' => 'nullable|string',
         ]);
 
         $company->update($validated);

@@ -1,0 +1,27 @@
+# Setup phase: install PHP and required extensions
+[phases.setup]
+nixPkgs = [
+  "php82",
+  "php82Extensions.gd",
+  "php82Extensions.mbstring",
+  "php82Extensions.pdo",
+  "php82Extensions.xml",
+  "php82Extensions.curl",
+  "php82Extensions.fileinfo"
+]
+
+# Build phase: composer install, cache artisan, set permissions
+[phases.build]
+cmds = [
+  "composer install --optimize-autoloader --no-dev",
+  "php artisan config:cache",
+  "php artisan route:cache",
+  "php artisan view:cache",
+  "mkdir -p storage/framework/{sessions,views,cache,testing} storage/logs bootstrap/cache",
+  "chmod -R a+rw storage bootstrap/cache",
+  "php artisan migrate"
+]
+
+# Start command: Laravel serve for Railway
+[start]
+cmd = "php artisan serve --host=0.0.0.0 --port=8080"

@@ -47,4 +47,10 @@ Route::prefix('umrahcab')->group(function () {
 
     // 15. Balance Summary
     require __DIR__ . '/UmrahCab/BalanceRoutes.php';
+
+    // 16. User Management
+    require __DIR__ . '/UmrahCab/UserRoutes.php';
+
+    // 17. Performance Reports
+    require __DIR__ . '/UmrahCab/PerformanceRoutes.php';
 });

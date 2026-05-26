@@ -12,16 +12,26 @@ class UcInvoice extends Model
     protected $table = 'uc_invoices';
 
     protected $fillable = [
+        'customer_id',
         'invoice_code',
         'customer',
         'date',
+        'period',
         'amount',
         'balance',
-        'status'
+        'status',
+        'type',
+        'remarks',
+        'entered_by'
     ];
 
     protected $casts = [
         'amount' => 'float',
         'balance' => 'float',
     ];
+
+    public function customer_relation()
+    {
+        return $this->belongsTo(UcCustomer::class, 'customer_id');
+    }
 }

@@ -8,9 +8,22 @@ use Illuminate\Http\Request;
 
 class UcPriceListController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(UcPriceList::orderBy('id', 'asc')->get());
+        $perPage = $request->query('per_page', 10);
+        $search = $request->query('search', '');
+
+        $query = UcPriceList::orderBy('id', 'asc');
+
+        if (!empty($search)) {
+            $query->where('route', 'like', "%{$search}%");
+        }
+
+        if ($request->query('paginate') === 'false') {
+            return response()->json($query->get());
+        }
+
+        return response()->json($query->paginate($perPage));
     }
 
     public function update(Request $request, $id)

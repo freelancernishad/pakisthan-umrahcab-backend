@@ -22,11 +22,13 @@ class AttachJwtFromCookie
              $token = $request->cookie('token') ?? $request->cookie('user_token') ?? $_COOKIE['token'] ?? $_COOKIE['user_token'] ?? null;
         } elseif ($request->is('admin') || $request->is('admin/*') || $request->is('api/admin') || $request->is('api/admin/*') || $request->is('api/auth/admin/*')) {
              $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? null;
+        } elseif ($request->is('company') || $request->is('company/*') || $request->is('api/company') || $request->is('api/company/*') || $request->is('api/auth/company/*') || $request->is('api/umrahcab/company/*')) {
+             $token = $request->cookie('company_token') ?? $_COOKIE['company_token'] ?? null;
         }
 
         // Fallback or generic logic if needed
         if (!$token) {
-             $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? $request->cookie('token') ?? $request->cookie('user_token') ?? $_COOKIE['token'] ?? $_COOKIE['user_token'] ?? null;
+             $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? $request->cookie('company_token') ?? $_COOKIE['company_token'] ?? $request->cookie('token') ?? $request->cookie('user_token') ?? $_COOKIE['token'] ?? $_COOKIE['user_token'] ?? null;
         }
 
         if ($token === 'null' || $token === 'undefined') {
@@ -47,7 +49,13 @@ class AttachJwtFromCookie
                     $request->headers->set('Authorization', 'Bearer ' . $newToken);
                     
                     // Determine which cookie name to use
-                    $cookieName = ($request->is('admin') || $request->is('admin/*') || $request->is('api/admin') || $request->is('api/admin/*') || $request->is('api/auth/admin/*')) ? 'admin_token' : 'token';
+                    if ($request->is('admin') || $request->is('admin/*') || $request->is('api/admin') || $request->is('api/admin/*') || $request->is('api/auth/admin/*')) {
+                        $cookieName = 'admin_token';
+                    } elseif ($request->is('company') || $request->is('company/*') || $request->is('api/company') || $request->is('api/company/*') || $request->is('api/auth/company/*') || $request->is('api/umrahcab/company/*')) {
+                        $cookieName = 'company_token';
+                    } else {
+                        $cookieName = 'token';
+                    }
                     
                     $secure = config('session.secure') ?? $request->secure();
                     $domain = config('session.domain');

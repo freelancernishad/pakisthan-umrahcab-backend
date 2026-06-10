@@ -1,0 +1,14 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\AuthenticateCompany;
+use App\Http\Controllers\Api\UmrahCab\CompanyPanelController;
+
+Route::prefix('company-panel')->middleware(AuthenticateCompany::class)->group(function () {
+    Route::get('dashboard-summary', [CompanyPanelController::class, 'dashboardSummary']);
+    Route::get('bookings', [CompanyPanelController::class, 'bookings']);
+    Route::get('customers', [CompanyPanelController::class, 'customers']);
+    Route::get('invoices', [CompanyPanelController::class, 'invoices']);
+    Route::get('ledgers', [CompanyPanelController::class, 'ledgers']);
+    Route::get('payments', [CompanyPanelController::class, 'payments']);
+});

@@ -66,6 +66,12 @@ return [
             'secret' => env('JWT_SECRET'), // Replace with your admin secret key
         ],
 
+        'company' => [
+            'driver' => 'jwt',
+            'provider' => 'companies',
+            'secret' => env('JWT_SECRET'),
+        ],
+
         'admin_web' => [
             'driver' => 'session',
             'provider' => 'admins',
@@ -110,6 +116,11 @@ return [
         'admins' => [
             'driver' => 'eloquent',
             'model' => App\Models\Admin::class,
+        ],
+
+        'companies' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\UmrahCab\UcCompany::class,
         ],
         // 'students' => [
         //     'driver' => 'eloquent',

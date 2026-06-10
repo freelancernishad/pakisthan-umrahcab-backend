@@ -22,6 +22,11 @@ if (file_exists($AdminAuthRoutes = __DIR__.'/Admins/Auth/AdminAuthRoutes.php')) 
     require $AdminAuthRoutes;
 }
 
+// Load CompanyAuthRoutes
+if (file_exists($CompanyAuthRoutes = __DIR__.'/Common/UmrahCab/CompanyAuthRoutes.php')) {
+    require $CompanyAuthRoutes;
+}
+
 // Load AdminPlanRoutes
 if (file_exists($AdminPlanRoutes = __DIR__.'/Admins/Plans/PlanRoutes.php')) {
     require $AdminPlanRoutes;

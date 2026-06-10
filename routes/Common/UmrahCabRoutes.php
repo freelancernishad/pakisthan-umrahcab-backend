@@ -53,4 +53,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // 17. Performance Reports
     require __DIR__ . '/UmrahCab/PerformanceRoutes.php';
+
+    // 18. B2B Company Panel Routes
+    require __DIR__ . '/UmrahCab/CompanyPanelRoutes.php';
 });

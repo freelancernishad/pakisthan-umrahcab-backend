@@ -33,6 +33,7 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'admin_token',
             'token',
             'user_token',
+            'company_token',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

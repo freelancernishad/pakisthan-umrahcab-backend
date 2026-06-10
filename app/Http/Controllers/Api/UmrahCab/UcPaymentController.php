@@ -8,9 +8,43 @@ use Illuminate\Http\Request;
 
 class UcPaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(UcPayment::orderBy('id', 'desc')->get());
+        $perPage = $request->query('per_page', 10);
+        $search = $request->query('search');
+        $company = $request->query('company');
+        $method = $request->query('method');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = UcPayment::orderBy('id', 'desc');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('custom_id', 'like', "%{$search}%")
+                  ->orWhere('company', 'like', "%{$search}%")
+                  ->orWhere('method', 'like', "%{$search}%")
+                  ->orWhere('transaction_ref', 'like', "%{$search}%");
+            });
+        }
+
+        if ($company) {
+            $query->where('company', $company);
+        }
+
+        if ($method && $method !== 'all') {
+            $query->where('method', $method);
+        }
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
+        return response()->json($query->paginate($perPage));
     }
 
     public function store(Request $request)

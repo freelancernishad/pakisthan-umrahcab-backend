@@ -43,6 +43,13 @@ class CompanyPanelController extends Controller
         // Get the latest balance from the most recent ledger entry, fallback to 0
         $currentBalance = $ledgerTransactions->first() ? $ledgerTransactions->first()->balance : 0;
 
+        // Pending payments details
+        $pendingPaymentsQuery = UcPayment::where('company', $company->name)
+            ->whereNotIn('status', ['Approved', 'Success', 'Verified']);
+        $pendingPaymentsCount = $pendingPaymentsQuery->count();
+        $pendingPaymentsTotal = $pendingPaymentsQuery->sum('amount');
+        $pendingPaymentsList = $pendingPaymentsQuery->orderBy('id', 'desc')->take(10)->get();
+
         return response()->json([
             'company' => $company,
             'total_bookings' => $totalBookings,
@@ -54,7 +61,10 @@ class CompanyPanelController extends Controller
                 'total_debit' => $totalDebit,
                 'total_credit' => $totalCredit,
                 'current_balance' => $currentBalance
-            ]
+            ],
+            'pending_payments_count' => $pendingPaymentsCount,
+            'pending_payments_total' => $pendingPaymentsTotal,
+            'pending_payments_list' => $pendingPaymentsList
         ]);
     }
 

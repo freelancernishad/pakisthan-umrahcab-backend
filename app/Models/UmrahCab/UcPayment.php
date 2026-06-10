@@ -18,7 +18,10 @@ class UcPayment extends Model
         'method',
         'amount',
         'currency',
-        'status'
+        'status',
+        'transaction_ref',
+        'proof_details',
+        'proof_file'
     ];
 
     protected $casts = [

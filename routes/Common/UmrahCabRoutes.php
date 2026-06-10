@@ -56,4 +56,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // 18. B2B Company Panel Routes
     require __DIR__ . '/UmrahCab/CompanyPanelRoutes.php';
+
+    // 19. Admin Chat Support Routes
+    require __DIR__ . '/UmrahCab/ChatRoutes.php';
 });

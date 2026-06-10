@@ -17,16 +17,26 @@ class UcCompanyController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'agent_username' => 'nullable|string|unique:uc_companies,agent_username',
+            'agent_password' => 'nullable|string',
             'phone' => 'nullable|string',
             'email' => 'nullable|email',
             'website' => 'nullable|string',
+            'logo_path' => 'nullable|string',
             'address' => 'nullable|string',
             'invoice' => 'required|boolean',
             'vouchers' => 'nullable|boolean',
             'reminders' => 'nullable|boolean',
             'statement_status' => 'nullable|string',
             'remarks' => 'nullable|string',
+            'ledger_frequency' => 'nullable|string',
+            'tomorrow_reminder' => 'nullable|boolean',
+            'exempt_bulk_lock' => 'nullable|boolean',
         ]);
+
+        if (!empty($validated['agent_password'])) {
+            $validated['agent_password'] = bcrypt($validated['agent_password']);
+        }
 
         $company = UcCompany::create($validated);
 
@@ -42,16 +52,28 @@ class UcCompanyController extends Controller
         $company = UcCompany::findOrFail($id);
         $validated = $request->validate([
             'name' => 'required|string',
+            'agent_username' => 'nullable|string|unique:uc_companies,agent_username,' . $id,
+            'agent_password' => 'nullable|string',
             'phone' => 'nullable|string',
             'email' => 'nullable|email',
             'website' => 'nullable|string',
+            'logo_path' => 'nullable|string',
             'address' => 'nullable|string',
             'invoice' => 'required|boolean',
             'vouchers' => 'nullable|boolean',
             'reminders' => 'nullable|boolean',
             'statement_status' => 'nullable|string',
             'remarks' => 'nullable|string',
+            'ledger_frequency' => 'nullable|string',
+            'tomorrow_reminder' => 'nullable|boolean',
+            'exempt_bulk_lock' => 'nullable|boolean',
         ]);
+
+        if (!empty($validated['agent_password'])) {
+            $validated['agent_password'] = bcrypt($validated['agent_password']);
+        } else {
+            unset($validated['agent_password']);
+        }
 
         $company->update($validated);
 

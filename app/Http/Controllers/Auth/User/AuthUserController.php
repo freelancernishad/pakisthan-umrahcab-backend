@@ -137,7 +137,11 @@ public function login(LoginRequest $request)
 
     // Check if user exists
     if (!$user) {
-        return response()->json(['message' => 'User not found'], 401);
+        logUserActivity('Login Failed', 'Authentication', null, $request, false, [
+            'email' => $request->email,
+            'reason' => 'User account not found'
+        ]);
+        return response()->json(['message' => 'User account not found.'], 401);
     }
 
     // Check if user is blocked

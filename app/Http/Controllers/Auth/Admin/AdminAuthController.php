@@ -99,8 +99,17 @@ public function register(AdminRegisterRequest $request)
      */
     public function login(AdminLoginRequest $request)
     {
-
         $credentials = $request->only('email', 'password');
+        $admin = Admin::where('email', $request->email)->first();
+
+        if (!$admin) {
+            logUserActivity('Admin Login Failed', 'Authentication', null, $request, false, [
+                'email' => $request->email,
+                'reason' => 'Admin account not found',
+                'guard' => 'admin'
+            ]);
+            return response()->json(['message' => 'Admin account not found.'], 401);
+        }
 
         if (Auth::guard('admin')->attempt($credentials)) {
             $admin = Auth::guard('admin')->user();
@@ -110,15 +119,26 @@ public function register(AdminRegisterRequest $request)
                 'email' => $admin->email,
                 'name' => $admin->name,
                 'email_verified' => !is_null($admin->email_verified_at),
-                // Add additional fields as necessary
             ];
 
             try {
                 // Generate a JWT token with custom claims
                 $token = JWTAuth::fromUser($admin, ['guard' => 'admin']);
             } catch (JWTException $e) {
+                logUserActivity('Admin Login Failed', 'Authentication', $admin->id, $request, false, [
+                    'email' => $admin->email,
+                    'reason' => 'Could not create JWT token: ' . $e->getMessage(),
+                    'guard' => 'admin'
+                ]);
                 return response()->json(['error' => 'Could not create token'], 500);
             }
+
+            // Log successful login
+            logUserActivity('Admin Login Successful', 'Authentication', null, $request, true, [
+                'admin_id' => $admin->id,
+                'email' => $admin->email,
+                'guard' => 'admin'
+            ]);
 
             $secure = config('session.secure') ?? request()->secure();
             $domain = config('session.domain');
@@ -133,7 +153,15 @@ public function register(AdminRegisterRequest $request)
             ->withCookie($cookie);
         }
 
-        return response()->json(['message' => 'Invalid credentials'], 401);
+        // Log failed login due to incorrect password
+        logUserActivity('Admin Login Failed', 'Authentication', null, $request, false, [
+            'admin_id' => $admin->id,
+            'email' => $admin->email,
+            'reason' => 'Incorrect password',
+            'guard' => 'admin'
+        ]);
+
+        return response()->json(['message' => 'Incorrect password credentials.'], 401);
     }
 
     /**

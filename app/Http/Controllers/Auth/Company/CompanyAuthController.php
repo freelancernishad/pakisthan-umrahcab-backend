@@ -33,6 +33,17 @@ class CompanyAuthController extends Controller
             'password' => $request->agent_password,
         ];
 
+        $company = UcCompany::where('agent_username', $request->agent_username)->first();
+
+        if (!$company) {
+            logUserActivity('Company Login Failed', 'Authentication', null, $request, false, [
+                'username' => $request->agent_username,
+                'reason' => 'B2B agent username not found',
+                'guard' => 'company'
+            ]);
+            return response()->json(['message' => 'B2B agent username not found.'], 401);
+        }
+
         if (Auth::guard('company')->attempt($credentials)) {
             $company = Auth::guard('company')->user();
 
@@ -49,8 +60,21 @@ class CompanyAuthController extends Controller
             try {
                 $token = JWTAuth::fromUser($company, ['guard' => 'company']);
             } catch (JWTException $e) {
+                logUserActivity('Company Login Failed', 'Authentication', null, $request, false, [
+                    'company_id' => $company->id,
+                    'username' => $company->agent_username,
+                    'reason' => 'Could not create JWT token: ' . $e->getMessage(),
+                    'guard' => 'company'
+                ]);
                 return response()->json(['error' => 'Could not create token'], 500);
             }
+
+            // Log successful login
+            logUserActivity('Company Login Successful', 'Authentication', null, $request, true, [
+                'company_id' => $company->id,
+                'username' => $company->agent_username,
+                'guard' => 'company'
+            ]);
 
             $secure = config('session.secure') ?? request()->secure();
             $domain = config('session.domain');
@@ -65,7 +89,15 @@ class CompanyAuthController extends Controller
             ->withCookie($cookie);
         }
 
-        return response()->json(['message' => 'Invalid B2B agent credentials.'], 401);
+        // Log failed login due to incorrect password
+        logUserActivity('Company Login Failed', 'Authentication', null, $request, false, [
+            'company_id' => $company->id,
+            'username' => $company->agent_username,
+            'reason' => 'Incorrect password',
+            'guard' => 'company'
+        ]);
+
+        return response()->json(['message' => 'Incorrect agent password credentials.'], 401);
     }
 
     /**

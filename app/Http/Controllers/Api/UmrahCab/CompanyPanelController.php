@@ -147,4 +147,32 @@ class CompanyPanelController extends Controller
 
         return response()->json($query->get());
     }
+
+    public function createCustomer(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string',
+            'contact' => 'nullable|string',
+        ]);
+
+        $validated['company'] = $company->name;
+
+        $count = UcCustomer::count() + 1;
+        $validated['custom_id'] = "#CST-{$count}";
+        $validated['registered_by'] = 'B2B Agent (' . $company->name . ')';
+        $validated['last_update'] = 'No edits';
+
+        $customer = UcCustomer::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer registered successfully!',
+            'data' => $customer
+        ], 201);
+    }
 }

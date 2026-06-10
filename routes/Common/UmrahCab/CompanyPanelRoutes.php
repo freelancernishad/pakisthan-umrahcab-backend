@@ -8,6 +8,7 @@ Route::prefix('company-panel')->middleware(AuthenticateCompany::class)->group(fu
     Route::get('dashboard-summary', [CompanyPanelController::class, 'dashboardSummary']);
     Route::get('bookings', [CompanyPanelController::class, 'bookings']);
     Route::get('customers', [CompanyPanelController::class, 'customers']);
+    Route::post('customers', [CompanyPanelController::class, 'createCustomer']);
     Route::get('invoices', [CompanyPanelController::class, 'invoices']);
     Route::get('ledgers', [CompanyPanelController::class, 'ledgers']);
     Route::get('payments', [CompanyPanelController::class, 'payments']);

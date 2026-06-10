@@ -42,6 +42,7 @@ class CompanyAuthController extends Controller
                 'agent_username' => $company->agent_username,
                 'email' => $company->email,
                 'phone' => $company->phone,
+                'logo_path' => $company->logo_path,
                 'guard' => 'company'
             ];
 

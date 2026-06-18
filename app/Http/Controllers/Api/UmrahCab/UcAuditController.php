@@ -8,9 +8,10 @@ use Illuminate\Http\Request;
 
 class UcAuditController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(UcAudit::orderBy('id', 'desc')->get());
+        $perPage = $request->query('per_page', 10);
+        return response()->json(UcAudit::orderBy('id', 'desc')->paginate($perPage));
     }
 
     public function store(Request $request)

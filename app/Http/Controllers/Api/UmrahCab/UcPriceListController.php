@@ -71,4 +71,38 @@ class UcPriceListController extends Controller
             'message' => 'Bulk rates applied to all routes successfully!'
         ]);
     }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'route' => 'required|string|unique:uc_price_lists,route',
+            'sedan_price' => 'nullable|numeric',
+            'sedan_dates' => 'nullable|string',
+            'suv_price' => 'nullable|numeric',
+            'suv_dates' => 'nullable|string',
+            'van_price' => 'nullable|numeric',
+            'van_dates' => 'nullable|string',
+            'coach_price' => 'nullable|numeric',
+            'coach_dates' => 'nullable|string',
+        ]);
+
+        $priceList = UcPriceList::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New route package added successfully!',
+            'data' => $priceList
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $priceList = UcPriceList::findOrFail($id);
+        $priceList->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Route package deleted successfully!'
+        ]);
+    }
 }

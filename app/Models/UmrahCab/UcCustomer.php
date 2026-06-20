@@ -16,6 +16,13 @@ class UcCustomer extends Model
         'name',
         'company',
         'contact',
+        'phone',
+        'secondary_phone',
+        'alternative_phone',
+        'email',
+        'passport_no',
+        'hotel_info',
+        'notes',
         'registered_by',
         'last_update'
     ];

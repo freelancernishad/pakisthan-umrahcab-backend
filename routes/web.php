@@ -95,8 +95,10 @@ Route::prefix('admin')->group(function () {
 
     Route::middleware([AttachJwtFromCookie::class, AuthenticateAdmin::class])->group(function () {
 
-        // Dashboard
+        // Dashboard & Terminal
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        Route::get('/terminal', [AdminDashboardController::class, 'terminal'])->name('admin.terminal');
+        Route::post('/terminal/run-command', [AdminDashboardController::class, 'runArtisanCommand'])->name('admin.terminal.run-command');
 
         // Settings View
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('admin.settings');

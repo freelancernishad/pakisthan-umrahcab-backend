@@ -42,7 +42,23 @@ class UcCustomerController extends Controller
             'name' => 'required|string',
             'company' => 'required|string',
             'contact' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'secondary_phone' => 'nullable|string',
+            'alternative_phone' => 'nullable|string',
+            'email' => 'nullable|string',
+            'passport_no' => 'nullable|string',
+            'hotel_info' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
+
+        if (empty($validated['contact'])) {
+            $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
+            $emailInfo = $request->email ? " | Email: {$request->email}" : "";
+            $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
+            $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
+            $notesInfo = $request->notes ? " | Notes: {$request->notes}" : "";
+            $validated['contact'] = trim("{$phones}{$emailInfo}{$passportInfo}{$hotelInfo}{$notesInfo}") ?: 'N/A';
+        }
 
         $count = UcCustomer::count() + 1;
         $validated['custom_id'] = "#CST-{$count}";
@@ -65,7 +81,24 @@ class UcCustomerController extends Controller
             'name' => 'required|string',
             'company' => 'required|string',
             'contact' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'secondary_phone' => 'nullable|string',
+            'alternative_phone' => 'nullable|string',
+            'email' => 'nullable|string',
+            'passport_no' => 'nullable|string',
+            'hotel_info' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
+
+        if (empty($validated['contact'])) {
+            $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
+            $emailInfo = $request->email ? " | Email: {$request->email}" : "";
+            $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
+            $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
+            $notesInfo = $request->notes ? " | Notes: {$request->notes}" : "";
+            $validated['contact'] = trim("{$phones}{$emailInfo}{$passportInfo}{$hotelInfo}{$notesInfo}") ?: 'N/A';
+        }
+
         $validated['last_update'] = 'umrahcab (Edited Today)';
 
         $customer->update($validated);

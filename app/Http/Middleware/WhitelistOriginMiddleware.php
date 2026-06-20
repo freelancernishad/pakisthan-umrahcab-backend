@@ -34,6 +34,11 @@ class WhitelistOriginMiddleware
             return $next($request);
         }
 
+        // Allow same-origin requests (e.g., local admin panel on port 8000)
+        if ($origin === $request->getSchemeAndHttpHost()) {
+            return $next($request);
+        }
+
         // Check whitelisted list
         if (in_array($origin, $allowedOrigins)) {
             return $next($request);

@@ -173,4 +173,63 @@ class AdminDashboardController extends Controller
         return view('admin.stripe.webhook', compact('webhookUrl', 'events'));
     }
 
+    public function terminal()
+    {
+        return view('admin.terminal');
+    }
+
+    public function runArtisanCommand(Request $request)
+    {
+        $command = $request->input('command');
+
+        if (empty($command)) {
+            return response()->json(['output' => 'No command provided.']);
+        }
+
+        // Clean up command
+        $command = trim($command);
+
+        // If the command starts with 'php ', replace it with the absolute PHP executable path
+        if (str_starts_with($command, 'php ')) {
+            $command = '"' . PHP_BINARY . '"' . substr($command, 3);
+        }
+
+        $basePath = base_path();
+        $output = '';
+
+        try {
+            $descriptorspec = [
+                0 => ["pipe", "r"],  // stdin
+                1 => ["pipe", "w"],  // stdout
+                2 => ["pipe", "w"]   // stderr
+            ];
+
+            $process = proc_open($command, $descriptorspec, $pipes, $basePath);
+
+            if (is_resource($process)) {
+                fclose($pipes[0]);
+
+                $stdout = stream_get_contents($pipes[1]);
+                fclose($pipes[1]);
+
+                $stderr = stream_get_contents($pipes[2]);
+                fclose($pipes[2]);
+
+                $returnValue = proc_close($process);
+
+                $output = $stdout . $stderr;
+
+                if (empty($output)) {
+                    $output = "Command executed successfully with exit code: " . $returnValue . " (no output returned).";
+                }
+            } else {
+                $output = "Error: Failed to open system process using proc_open.";
+            }
+        } catch (\Exception $e) {
+            $output = "Error executing command: " . $e->getMessage();
+        }
+
+        return response()->json(['output' => $output]);
+    }
+
 }

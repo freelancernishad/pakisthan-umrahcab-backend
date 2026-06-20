@@ -12,6 +12,7 @@ class UcBooking extends Model
     protected $table = 'uc_bookings';
 
     protected $fillable = [
+        'customer_id',
         'booking_code',
         'pickup',
         'destination',

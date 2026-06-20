@@ -42,6 +42,13 @@ class UcBookingController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        if (empty($validated['customer_id']) && !empty($validated['full_name'])) {
+            $customer = \App\Models\UmrahCab\UcCustomer::where('name', 'like', trim($validated['full_name']))->first();
+            if ($customer) {
+                $validated['customer_id'] = $customer->id;
+            }
+        }
+
         $validated['booking_code'] = 'UCB-' . rand(100000, 999999);
         $validated['status'] = 'Pending Check';
 
@@ -79,6 +86,7 @@ class UcBookingController extends Controller
         $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
 
         $validated = $request->validate([
+            'customer_id' => 'nullable|exists:uc_customers,id',
             'pickup' => 'nullable|string',
             'destination' => 'nullable|string',
             'date' => 'nullable|date',
@@ -93,6 +101,13 @@ class UcBookingController extends Controller
             'notes' => 'nullable|string',
             'status' => 'nullable|string',
         ]);
+
+        if (empty($validated['customer_id']) && !empty($validated['full_name'])) {
+            $customer = \App\Models\UmrahCab\UcCustomer::where('name', 'like', trim($validated['full_name']))->first();
+            if ($customer) {
+                $validated['customer_id'] = $customer->id;
+            }
+        }
 
         $booking->update($validated);
 

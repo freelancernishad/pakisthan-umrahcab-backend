@@ -25,12 +25,30 @@
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Preset Commands</label>
                         <select id="preset-commands" class="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-slate-300 focus:outline-none focus:border-indigo-500/50 transition-colors">
                             <option value="">-- Choose a preset command or type custom below --</option>
-                            <option value="php artisan migrate">php artisan migrate (Run database migrations)</option>
-                            <option value="php artisan db:seed">php artisan db:seed (Seed database tables)</option>
-                            <option value="php artisan route:list">php artisan route:list (List all routes)</option>
-                            <option value="php artisan config:clear">php artisan config:clear (Clear config cache)</option>
-                            <option value="php artisan cache:clear">php artisan cache:clear (Clear application cache)</option>
-                            <option value="composer dump-autoload">composer dump-autoload (Optimize Autoloader)</option>
+                            <optgroup label="🚀 1. Production Deployment Sequence (ধাপ অনুসারে প্রোডাকশন রান)">
+                                <option value="composer install --no-dev --optimize-autoloader">Step 1: composer install --no-dev --optimize-autoloader</option>
+                                <option value="php artisan migrate --force">Step 2: php artisan migrate --force (Run migrations safely)</option>
+                                <option value="php artisan config:cache">Step 3: php artisan config:cache (Optimizes config loading)</option>
+                                <option value="php artisan route:cache">Step 4: php artisan route:cache (Optimizes route registration)</option>
+                                <option value="php artisan view:cache">Step 5: php artisan view:cache (Pre-compiles blade templates)</option>
+                            </optgroup>
+                            <optgroup label="🧹 2. Cache Management & Cleansers (ক্যাশ ক্লিয়ার এবং অপটিমাইজেশন)">
+                                <option value="php artisan optimize:clear">php artisan optimize:clear (Clear all cache & optimized files)</option>
+                                <option value="php artisan config:clear">php artisan config:clear (Clear config cache only)</option>
+                                <option value="php artisan route:clear">php artisan route:clear (Clear route cache only)</option>
+                                <option value="php artisan cache:clear">php artisan cache:clear (Clear application data cache)</option>
+                                <option value="php artisan view:clear">php artisan view:clear (Clear compiled view templates)</option>
+                            </optgroup>
+                            <optgroup label="🗄️ 3. Database Maintenance (ডাটাবেজ ম্যানেজমেন্ট)">
+                                <option value="php artisan migrate:status">php artisan migrate:status (Check run state of migrations)</option>
+                                <option value="php artisan migrate">php artisan migrate (Run database migrations normally)</option>
+                                <option value="php artisan db:seed">php artisan db:seed (Seed database tables)</option>
+                            </optgroup>
+                            <optgroup label="🔍 4. System Diagnostics & Info (ডায়াগনস্টিকস)">
+                                <option value="php artisan route:list">php artisan route:list (List all active backend routes)</option>
+                                <option value="php artisan about">php artisan about (Show system configuration overview)</option>
+                                <option value="php artisan --version">php artisan --version (Show Laravel Framework version)</option>
+                            </optgroup>
                         </select>
                     </div>
                     

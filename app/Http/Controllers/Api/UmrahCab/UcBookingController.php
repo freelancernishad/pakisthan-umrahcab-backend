@@ -42,11 +42,8 @@ class UcBookingController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        if (empty($validated['customer_id']) && !empty($validated['full_name'])) {
-            $customer = \App\Models\UmrahCab\UcCustomer::where('name', 'like', trim($validated['full_name']))->first();
-            if ($customer) {
-                $validated['customer_id'] = $customer->id;
-            }
+        if (empty($validated['customer_id'])) {
+            $validated['customer_id'] = $this->resolveCustomerId($validated);
         }
 
         $validated['booking_code'] = 'UCB-' . rand(100000, 999999);
@@ -102,10 +99,13 @@ class UcBookingController extends Controller
             'status' => 'nullable|string',
         ]);
 
-        if (empty($validated['customer_id']) && !empty($validated['full_name'])) {
-            $customer = \App\Models\UmrahCab\UcCustomer::where('name', 'like', trim($validated['full_name']))->first();
-            if ($customer) {
-                $validated['customer_id'] = $customer->id;
+        if (!array_key_exists('customer_id', $validated)) {
+            if (isset($validated['full_name']) || isset($validated['email']) || isset($validated['whatsapp'])) {
+                $validated['customer_id'] = $this->resolveCustomerId(array_merge($booking->toArray(), $validated));
+            }
+        } else {
+            if (empty($validated['customer_id'])) {
+                $validated['customer_id'] = $this->resolveCustomerId(array_merge($booking->toArray(), $validated));
             }
         }
 
@@ -116,5 +116,55 @@ class UcBookingController extends Controller
             'message' => 'Booking updated successfully!',
             'data' => $booking
         ]);
+    }
+
+    private function resolveCustomerId(array $data)
+    {
+        $fullName = isset($data['full_name']) ? trim($data['full_name']) : '';
+        $email = isset($data['email']) ? trim($data['email']) : '';
+        $whatsapp = isset($data['whatsapp']) ? trim($data['whatsapp']) : '';
+
+        if (empty($fullName) && empty($email) && empty($whatsapp)) {
+            return null;
+        }
+
+        $customerQuery = \App\Models\UmrahCab\UcCustomer::query();
+        $hasCondition = false;
+
+        if (!empty($fullName)) {
+            $customerQuery->where('name', 'like', $fullName);
+            $hasCondition = true;
+        }
+
+        if (!empty($email)) {
+            if ($hasCondition) {
+                $customerQuery->orWhere('email', '=', $email);
+            } else {
+                $customerQuery->where('email', '=', $email);
+                $hasCondition = true;
+            }
+        }
+
+        if (!empty($whatsapp)) {
+            if ($hasCondition) {
+                $customerQuery->orWhere(function($sub) use ($whatsapp) {
+                    $sub->where('phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('secondary_phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('alternative_phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('contact', 'like', "%{$whatsapp}%");
+                });
+            } else {
+                $customerQuery->where(function($sub) use ($whatsapp) {
+                    $sub->where('phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('secondary_phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('alternative_phone', 'like', "%{$whatsapp}%")
+                        ->orWhere('contact', 'like', "%{$whatsapp}%");
+                });
+                $hasCondition = true;
+            }
+        }
+
+        $customer = $customerQuery->first();
+        return $customer ? $customer->id : null;
     }
 }

@@ -3,6 +3,18 @@
 @section('title', 'Web Console Terminal')
 
 @section('content')
+    <style>
+        #preset-commands option {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+            font-size: 14px;
+        }
+        #preset-commands optgroup {
+            background-color: #0f172a !important;
+            color: #a5b4fc !important;
+            font-weight: bold !important;
+        }
+    </style>
     <div class="space-y-8 pb-12">
         <!-- Interactive Web Terminal -->
         <div class="glass rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">

@@ -198,9 +198,13 @@ class AdminDashboardController extends Controller
         // Clean up command
         $command = trim($command);
 
-        // If the command starts with 'php ', replace it with the absolute PHP executable path
+        // If the command starts with 'php ', resolve the executable path safely
         if (str_starts_with($command, 'php ')) {
-            $command = '"' . PHP_BINARY . '"' . substr($command, 3);
+            $phpPath = 'php';
+            if (defined('PHP_BINARY') && !empty(PHP_BINARY) && @is_executable(PHP_BINARY) && !str_contains(PHP_BINARY, 'php-fpm')) {
+                $phpPath = '"' . PHP_BINARY . '"';
+            }
+            $command = $phpPath . substr($command, 3);
         }
 
         $basePath = base_path();

@@ -57,10 +57,19 @@ class AdminDashboardController extends Controller
         ];
 
         // 7. Disk Usage
-        $diagnostics['disk'] = [
-            'total' => $this->formatSize(disk_total_space("/")),
-            'free' => $this->formatSize(disk_free_space("/"))
-        ];
+        try {
+            $totalSpace = @disk_total_space(base_path());
+            $freeSpace = @disk_free_space(base_path());
+            $diagnostics['disk'] = [
+                'total' => $totalSpace !== false ? $this->formatSize($totalSpace) : 'N/A',
+                'free' => $freeSpace !== false ? $this->formatSize($freeSpace) : 'N/A'
+            ];
+        } catch (\Exception $e) {
+            $diagnostics['disk'] = [
+                'total' => 'N/A',
+                'free' => 'N/A'
+            ];
+        }
 
         // 8. MySQL Port
         $conn = @fsockopen("127.0.0.1", 3306, $errno, $errstr, 2);

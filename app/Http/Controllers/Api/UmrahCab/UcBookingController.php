@@ -21,6 +21,11 @@ class UcBookingController extends Controller
             });
         }
 
+        if ($request->has('page')) {
+            $perPage = $request->query('per_page', 10);
+            return response()->json($query->paginate($perPage));
+        }
+
         return response()->json($query->get());
     }
 
@@ -64,6 +69,12 @@ class UcBookingController extends Controller
             ->orWhere('full_name', 'like', "%{$code}%")
             ->get();
 
+        return response()->json($booking);
+    }
+
+    public function show($id)
+    {
+        $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
         return response()->json($booking);
     }
 

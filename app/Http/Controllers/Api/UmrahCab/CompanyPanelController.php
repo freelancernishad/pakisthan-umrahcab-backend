@@ -87,6 +87,39 @@ class CompanyPanelController extends Controller
             });
         }
 
+        $filter = $request->query('filter');
+        if ($filter) {
+            $today = \Carbon\Carbon::today()->toDateString();
+            if ($filter === 'cancelled') {
+                $query->where(function($q) {
+                    $q->where('status', 'like', '%cancel%')
+                      ->orWhere('status', 'like', '%cancelled%');
+                });
+            } elseif ($filter === 'current') {
+                $query->where(function($q) use ($today) {
+                    $q->where('date', '=', $today)
+                      ->orWhere(function($sub) use ($today) {
+                          $sub->where('date', '<=', $today)
+                              ->where(function($s) {
+                                  $s->where('status', 'like', '%dispatch%')
+                                    ->orWhere('status', 'like', '%pending%')
+                                    ->orWhere('status', 'like', '%confirm%');
+                              });
+                      });
+                })->where('status', 'not like', '%cancel%')
+                  ->where('status', 'not like', '%completed%');
+            } elseif ($filter === 'upcoming') {
+                $query->where('date', '>', $today)
+                      ->where('status', 'not like', '%cancel%')
+                      ->where('status', 'not like', '%completed%');
+            }
+        }
+
+        if ($request->has('page')) {
+            $perPage = $request->query('per_page', 10);
+            return response()->json($query->paginate($perPage));
+        }
+
         return response()->json($query->get());
     }
 

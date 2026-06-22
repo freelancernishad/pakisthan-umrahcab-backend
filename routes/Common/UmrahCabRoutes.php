@@ -59,4 +59,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // 19. Admin Chat Support Routes
     require __DIR__ . '/UmrahCab/ChatRoutes.php';
+
+    // 20. Hotels
+    require __DIR__ . '/UmrahCab/HotelRoutes.php';
 });

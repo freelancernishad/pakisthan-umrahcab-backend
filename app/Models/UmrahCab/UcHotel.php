@@ -12,12 +12,21 @@ class UcHotel extends Model
     protected $table = 'uc_hotels';
 
     protected $fillable = [
+        'customer_id',
+        'custom_id',
         'name',
         'city',
-        'active'
+        'active',
+        'check_in',
+        'check_out'
     ];
 
     protected $casts = [
         'active' => 'integer',
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(UcCustomer::class, 'customer_id');
+    }
 }

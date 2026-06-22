@@ -127,13 +127,15 @@ class UcCustomerController extends Controller
         $services = \App\Models\UmrahCab\UcService::where('customer_id', $customer->id)->get();
         $flights = \App\Models\UmrahCab\UcFlight::where('customer_id', $customer->id)->get();
         $trains = \App\Models\UmrahCab\UcTrain::where('customer_id', $customer->id)->get();
+        $hotels = \App\Models\UmrahCab\UcHotel::where('customer_id', $customer->id)->get();
 
         return response()->json([
             'customer' => $customer,
             'bookings' => $bookings,
             'services' => $services,
             'flights' => $flights,
-            'trains' => $trains
+            'trains' => $trains,
+            'hotels' => $hotels
         ]);
     }
 

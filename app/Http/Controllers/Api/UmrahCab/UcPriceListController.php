@@ -105,4 +105,48 @@ class UcPriceListController extends Controller
             'message' => 'Route package deleted successfully!'
         ]);
     }
+
+    public function locations()
+    {
+        $routes = UcPriceList::pluck('route')->toArray();
+        $locationsSet = [];
+        
+        $fallbackLocations = [
+            "Jeddah Airport (JED) - Terminal 1",
+            "Jeddah Airport (JED) - North Terminal",
+            "Makkah Hotel",
+            "Madinah Hotel",
+            "Jeddah Hotel",
+            "Makkah Haram",
+            "Madinah Haram",
+            "Makkah Station (Haramain)",
+            "Madinah Station (Haramain)",
+            "Jeddah Station (Haramain)",
+            "Taif",
+            "Yanbu"
+        ];
+        
+        foreach ($fallbackLocations as $loc) {
+            $locationsSet[strtolower($loc)] = $loc;
+        }
+
+        foreach ($routes as $route) {
+            if (empty($route)) continue;
+            
+            $routeStr = explode('★', $route)[0];
+            $routeStr = explode('(', $routeStr)[0];
+            $routeStr = trim($routeStr);
+            
+            $parts = preg_split('/\s+to\s+|\s+TO\s+|\s*-\s*|\s*>\s*/i', $routeStr);
+            foreach ($parts as $p) {
+                $cleaned = trim($p);
+                if (strlen($cleaned) > 2) {
+                    $formatted = ucwords(strtolower($cleaned));
+                    $locationsSet[strtolower($formatted)] = $formatted;
+                }
+            }
+        }
+
+        return response()->json(array_values($locationsSet));
+    }
 }

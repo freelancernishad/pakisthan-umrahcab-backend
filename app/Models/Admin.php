@@ -18,6 +18,8 @@ class Admin extends Authenticatable implements JWTSubject, MustVerifyEmail
         'email',
         'password',
         'username',
+        'role',
+        'permissions',
         'otp',
         'otp_expires_at',
         'email_verification_hash',
@@ -36,6 +38,7 @@ class Admin extends Authenticatable implements JWTSubject, MustVerifyEmail
         'email_verified_at' => 'datetime',
         'otp_expires_at' => 'datetime',
         'password' => 'hashed',
+        'permissions' => 'array',
     ];
 
     public function getJWTIdentifier()
@@ -50,6 +53,8 @@ class Admin extends Authenticatable implements JWTSubject, MustVerifyEmail
             'name' => $this->name,
             'email' => $this->email,
             'username' => $this->username,
+            'role' => $this->role ?? 'SUPER_ADMIN',
+            'permissions' => $this->permissions,
             'email_verified' => !is_null($this->email_verified_at),
             "guard" => "admin",
             "model" => Admin::class

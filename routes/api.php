@@ -27,6 +27,11 @@ if (file_exists($CompanyAuthRoutes = __DIR__.'/Common/UmrahCab/CompanyAuthRoutes
     require $CompanyAuthRoutes;
 }
 
+// Load DriverAuthRoutes
+if (file_exists($DriverAuthRoutes = __DIR__.'/Common/UmrahCab/DriverAuthRoutes.php')) {
+    require $DriverAuthRoutes;
+}
+
 // Load AdminPlanRoutes
 if (file_exists($AdminPlanRoutes = __DIR__.'/Admins/Plans/PlanRoutes.php')) {
     require $AdminPlanRoutes;

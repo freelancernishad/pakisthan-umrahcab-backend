@@ -34,6 +34,11 @@ $app = Application::configure(basePath: dirname(__DIR__))
             'token',
             'user_token',
             'company_token',
+            'driver_token',
+        ]);
+
+        $middleware->alias([
+            'permission' => \App\Http\Middleware\CheckPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

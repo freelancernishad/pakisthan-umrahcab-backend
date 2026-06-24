@@ -72,6 +72,12 @@ return [
             'secret' => env('JWT_SECRET'),
         ],
 
+        'driver' => [
+            'driver' => 'jwt',
+            'provider' => 'drivers',
+            'secret' => env('JWT_SECRET'),
+        ],
+
         'admin_web' => [
             'driver' => 'session',
             'provider' => 'admins',
@@ -121,6 +127,11 @@ return [
         'companies' => [
             'driver' => 'eloquent',
             'model' => App\Models\UmrahCab\UcCompany::class,
+        ],
+
+        'drivers' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\UmrahCab\UcDriver::class,
         ],
         // 'students' => [
         //     'driver' => 'eloquent',

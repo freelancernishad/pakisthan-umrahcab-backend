@@ -62,4 +62,13 @@ Route::prefix('umrahcab')->group(function () {
 
     // 20. Hotels
     require __DIR__ . '/UmrahCab/HotelRoutes.php';
+
+    // 21. Driver Portal Routes
+    require __DIR__ . '/UmrahCab/DriverRoutes.php';
+
+    // 22. Driver Management Routes
+    require __DIR__ . '/UmrahCab/DriverManageRoutes.php';
+
+    // 23. Sub-Admin Management Routes
+    require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
 });

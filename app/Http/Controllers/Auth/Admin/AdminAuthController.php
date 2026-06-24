@@ -84,6 +84,9 @@ public function register(AdminRegisterRequest $request)
         'admin' => [
             'email' => $admin->email,
             'name' => $admin->name,
+            'username' => $admin->username,
+            'role' => $admin->role,
+            'permissions' => $admin->permissions,
             'email_verified' => !is_null($admin->email_verified_at),
         ],
         'message' => $emailMessage,
@@ -118,6 +121,9 @@ public function register(AdminRegisterRequest $request)
             $payload = [
                 'email' => $admin->email,
                 'name' => $admin->name,
+                'username' => $admin->username,
+                'role' => $admin->role,
+                'permissions' => $admin->permissions,
                 'email_verified' => !is_null($admin->email_verified_at),
             ];
 

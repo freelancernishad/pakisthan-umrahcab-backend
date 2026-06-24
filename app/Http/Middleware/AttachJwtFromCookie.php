@@ -24,11 +24,13 @@ class AttachJwtFromCookie
              $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? null;
         } elseif ($request->is('company') || $request->is('company/*') || $request->is('api/company') || $request->is('api/company/*') || $request->is('api/auth/company/*') || $request->is('api/umrahcab/company/*')) {
              $token = $request->cookie('company_token') ?? $_COOKIE['company_token'] ?? null;
+        } elseif ($request->is('driver') || $request->is('driver/*') || $request->is('api/driver') || $request->is('api/driver/*') || $request->is('api/auth/driver/*') || $request->is('api/umrahcab/driver/*')) {
+             $token = $request->cookie('driver_token') ?? $_COOKIE['driver_token'] ?? null;
         }
 
         // Fallback or generic logic if needed
         if (!$token) {
-             $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? $request->cookie('company_token') ?? $_COOKIE['company_token'] ?? $request->cookie('token') ?? $request->cookie('user_token') ?? $_COOKIE['token'] ?? $_COOKIE['user_token'] ?? null;
+             $token = $request->cookie('admin_token') ?? $_COOKIE['admin_token'] ?? $request->cookie('company_token') ?? $_COOKIE['company_token'] ?? $request->cookie('driver_token') ?? $_COOKIE['driver_token'] ?? $request->cookie('token') ?? $request->cookie('user_token') ?? $_COOKIE['token'] ?? $_COOKIE['user_token'] ?? null;
         }
 
         if ($token === 'null' || $token === 'undefined') {
@@ -53,6 +55,8 @@ class AttachJwtFromCookie
                         $cookieName = 'admin_token';
                     } elseif ($request->is('company') || $request->is('company/*') || $request->is('api/company') || $request->is('api/company/*') || $request->is('api/auth/company/*') || $request->is('api/umrahcab/company/*')) {
                         $cookieName = 'company_token';
+                    } elseif ($request->is('driver') || $request->is('driver/*') || $request->is('api/driver') || $request->is('api/driver/*') || $request->is('api/auth/driver/*') || $request->is('api/umrahcab/driver/*')) {
+                        $cookieName = 'driver_token';
                     } else {
                         $cookieName = 'token';
                     }

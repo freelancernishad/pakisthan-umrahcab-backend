@@ -13,6 +13,23 @@ class UcFleetController extends Controller
         return response()->json(UcFleet::orderBy('id', 'asc')->get());
     }
 
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'model' => 'required|string|unique:uc_fleet,model',
+            'count' => 'required|integer|min:0',
+            'active' => 'required|integer|min:0',
+        ]);
+
+        $fleet = UcFleet::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'New vehicle added to fleet!',
+            'data' => $fleet
+        ]);
+    }
+
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -27,6 +44,17 @@ class UcFleetController extends Controller
             'success' => true,
             'message' => 'Fleet allocation updated!',
             'data' => $fleet
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $fleet = UcFleet::findOrFail($id);
+        $fleet->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Vehicle removed from fleet!'
         ]);
     }
 }

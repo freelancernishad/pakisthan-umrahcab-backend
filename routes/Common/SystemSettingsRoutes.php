@@ -10,3 +10,7 @@ Route::prefix('admin')->group(function () {
         Route::post('/system-setting', [SystemSettingController::class, 'storeOrUpdate']);
     });
 });
+
+// Public route to get website settings dynamically (no auth required)
+Route::get('/public/system-setting', [SystemSettingController::class, 'index']);
+

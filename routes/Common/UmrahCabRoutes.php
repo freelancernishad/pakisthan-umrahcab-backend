@@ -71,4 +71,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // 23. Sub-Admin Management Routes
     require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
+
+    // 24. Website Global Settings Routes
+    require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
 });

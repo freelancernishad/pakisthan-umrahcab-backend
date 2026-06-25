@@ -66,8 +66,17 @@ class UcPaymentController extends Controller
         if ($request->hasFile('proof_file')) {
             $file = $request->file('proof_file');
             $filename = 'proof_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/proofs'), $filename);
-            $validated['proof_file'] = '/uploads/proofs/' . $filename;
+            
+            // Upload to S3 if configured, otherwise fall back to local disk
+            if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.secret') && config('filesystems.disks.s3.bucket')) {
+                $path = \Illuminate\Support\Facades\Storage::disk('s3')->putFileAs('proofs', $file, $filename);
+                $proofPath = \Illuminate\Support\Facades\Storage::disk('s3')->url($path);
+            } else {
+                $file->move(public_path('uploads/proofs'), $filename);
+                $proofPath = '/uploads/proofs/' . $filename;
+            }
+            
+            $validated['proof_file'] = $proofPath;
         }
 
         $payment = UcPayment::create($validated);

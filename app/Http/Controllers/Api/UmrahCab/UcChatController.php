@@ -19,13 +19,20 @@ class UcChatController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             if ($file->isValid()) {
-                $directory = public_path('uploads/chat');
-                if (!File::exists($directory)) {
-                    File::makeDirectory($directory, 0755, true, true);
-                }
                 $filename = time() . '_' . str_replace(' ', '_', $file->getClientOriginalName());
-                $file->move($directory, $filename);
-                return 'uploads/chat/' . $filename;
+                
+                // Upload to S3 if configured, otherwise fall back to local disk
+                if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.secret') && config('filesystems.disks.s3.bucket')) {
+                    $path = \Illuminate\Support\Facades\Storage::disk('s3')->putFileAs('chat', $file, $filename);
+                    return \Illuminate\Support\Facades\Storage::disk('s3')->url($path);
+                } else {
+                    $directory = public_path('uploads/chat');
+                    if (!\Illuminate\Support\Facades\File::exists($directory)) {
+                        \Illuminate\Support\Facades\File::makeDirectory($directory, 0755, true, true);
+                    }
+                    $file->move($directory, $filename);
+                    return 'uploads/chat/' . $filename;
+                }
             }
         }
         return null;

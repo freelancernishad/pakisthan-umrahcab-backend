@@ -191,9 +191,25 @@ class CompanyPanelController extends Controller
         $validated = $request->validate([
             'name' => 'required|string',
             'contact' => 'nullable|string',
+            'phone' => 'nullable|string',
+            'secondary_phone' => 'nullable|string',
+            'alternative_phone' => 'nullable|string',
+            'email' => 'nullable|string',
+            'passport_no' => 'nullable|string',
+            'hotel_info' => 'nullable|string',
+            'notes' => 'nullable|string',
         ]);
 
         $validated['company'] = $company->name;
+
+        if (empty($validated['contact'])) {
+            $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
+            $emailInfo = $request->email ? " | Email: {$request->email}" : "";
+            $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
+            $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
+            $notesInfo = $request->notes ? " | Notes: {$request->notes}" : "";
+            $validated['contact'] = trim("{$phones}{$emailInfo}{$passportInfo}{$hotelInfo}{$notesInfo}") ?: 'N/A';
+        }
 
         $count = UcCustomer::count() + 1;
         $validated['custom_id'] = "#CST-{$count}";
@@ -202,10 +218,40 @@ class CompanyPanelController extends Controller
 
         $customer = UcCustomer::create($validated);
 
+        $this->syncUnlinkedBookings($customer);
+
         return response()->json([
             'success' => true,
             'message' => 'Customer registered successfully!',
             'data' => $customer
         ], 201);
+    }
+
+    private function syncUnlinkedBookings(UcCustomer $customer)
+    {
+        $unlinkedBookingsQuery = UcBooking::whereNull('customer_id');
+
+        $unlinkedBookingsQuery->where(function($q) use ($customer) {
+            $q->where('full_name', 'like', trim($customer->name));
+
+            if (!empty($customer->email)) {
+                $q->orWhere('email', 'like', '%' . trim($customer->email) . '%');
+            }
+
+            if (!empty($customer->phone)) {
+                $phone = trim($customer->phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+            if (!empty($customer->secondary_phone)) {
+                $phone = trim($customer->secondary_phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+            if (!empty($customer->alternative_phone)) {
+                $phone = trim($customer->alternative_phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+        });
+
+        $unlinkedBookingsQuery->update(['customer_id' => $customer->id]);
     }
 }

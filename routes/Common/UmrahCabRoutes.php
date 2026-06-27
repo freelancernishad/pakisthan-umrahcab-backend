@@ -22,14 +22,14 @@ Route::prefix('umrahcab')->group(function () {
     require __DIR__ . '/UmrahCab/FlightRoutes.php';
     require __DIR__ . '/UmrahCab/TrainRoutes.php';
     require __DIR__ . '/UmrahCab/HotelRoutes.php';
+    require __DIR__ . '/UmrahCab/FleetRoutes.php';
+    require __DIR__ . '/UmrahCab/NoticeRoutes.php';
+    require __DIR__ . '/UmrahCab/PriceListRoutes.php';
 
     // ---------------------------------------------------------
     // 2. Strictly Administrative Control Routes (Admin Only)
     // ---------------------------------------------------------
     Route::middleware([AttachJwtFromCookie::class, AuthenticateAdmin::class])->group(function () {
-        // Fleet Management
-        require __DIR__ . '/UmrahCab/FleetRoutes.php';
-
         // Customers & Companies
         require __DIR__ . '/UmrahCab/CustomerRoutes.php';
         require __DIR__ . '/UmrahCab/CompanyRoutes.php';
@@ -46,8 +46,6 @@ Route::prefix('umrahcab')->group(function () {
         require __DIR__ . '/UmrahCab/PerformanceRoutes.php';
 
         // Settings, Notices, Price Matrix, Users
-        require __DIR__ . '/UmrahCab/NoticeRoutes.php';
-        require __DIR__ . '/UmrahCab/PriceListRoutes.php';
         require __DIR__ . '/UmrahCab/UserRoutes.php';
         require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
         require __DIR__ . '/UmrahCab/DriverManageRoutes.php';

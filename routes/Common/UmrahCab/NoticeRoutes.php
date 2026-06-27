@@ -2,6 +2,13 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\UmrahCab\UcNoticeController;
+use App\Http\Middleware\AuthenticateAdminOrCompany;
+use App\Http\Middleware\AuthenticateAdmin;
 
-Route::get('/notices', [UcNoticeController::class, 'index']);
-Route::post('/notices', [UcNoticeController::class, 'store']);
+Route::middleware(AuthenticateAdminOrCompany::class)->group(function () {
+    Route::get('/notices', [UcNoticeController::class, 'index']);
+});
+
+Route::middleware(AuthenticateAdmin::class)->group(function () {
+    Route::post('/notices', [UcNoticeController::class, 'store']);
+});

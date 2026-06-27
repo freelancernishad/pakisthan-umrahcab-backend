@@ -14,11 +14,18 @@ class UcHotelController extends Controller
         $search = $request->query('search');
         $active = $request->query('active');
         $customerId = $request->query('customer_id');
+        $type = $request->query('type');
 
         $query = UcHotel::with('customer')->orderBy('id', 'desc');
 
         if ($city) {
             $query->where('city', $city);
+        }
+
+        if ($type === 'directory') {
+            $query->whereNull('customer_id');
+        } elseif ($type === 'assignments') {
+            $query->whereNotNull('customer_id');
         }
 
         if ($search) {

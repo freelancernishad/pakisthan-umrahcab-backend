@@ -27,11 +27,12 @@ class Cors
             'http://127.0.0.1:3001',
         ];
 
-        // Specific allowed origin if in list, otherwise '*' (or keep incoming if it's whitelisted in DB later)
+        // Specific allowed origin if in list, otherwise default to a safe allowed origin
         if (in_array($origin, $allowedOrigins)) {
             $currentOrigin = $origin;
         } else {
-            $currentOrigin = $origin; // Default to incoming for now to bypass browser checks
+            // Secure default: do not dynamically reflect untrusted origins
+            $currentOrigin = count($allowedOrigins) > 0 ? $allowedOrigins[0] : 'http://localhost:3000';
         }
 
         // Handle preflight OPTIONS request

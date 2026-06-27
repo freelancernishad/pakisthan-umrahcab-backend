@@ -1,77 +1,57 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\AttachJwtFromCookie;
+use App\Http\Middleware\AuthenticateAdmin;
 
 Route::prefix('umrahcab')->group(function () {
-    // 1. Bookings
-    require __DIR__ . '/UmrahCab/BookingRoutes.php';
+    // ---------------------------------------------------------
+    // 1. Public & Mixed Access Routes (Self-governed or Guest)
+    // ---------------------------------------------------------
+    // Auth routes
+    require __DIR__ . '/UmrahCab/CompanyAuthRoutes.php';
+    require __DIR__ . '/UmrahCab/DriverAuthRoutes.php';
 
-    // 2. Customers
-    require __DIR__ . '/UmrahCab/CustomerRoutes.php';
-
-    // 3. Companies
-    require __DIR__ . '/UmrahCab/CompanyRoutes.php';
-
-    // 4. Services
-    require __DIR__ . '/UmrahCab/ServiceRoutes.php';
-
-    // 5. Flights
-    require __DIR__ . '/UmrahCab/FlightRoutes.php';
-
-    // 6. Trains
-    require __DIR__ . '/UmrahCab/TrainRoutes.php';
-
-    // 7. Invoices
-    require __DIR__ . '/UmrahCab/InvoiceRoutes.php';
-
-    // 8. Ledgers
-    require __DIR__ . '/UmrahCab/LedgerRoutes.php';
-
-    // 9. Payments
-    require __DIR__ . '/UmrahCab/PaymentRoutes.php';
-
-    // 10. Notices
-    require __DIR__ . '/UmrahCab/NoticeRoutes.php';
-
-    // 11. Fleet
-    require __DIR__ . '/UmrahCab/FleetRoutes.php';
-
-    // 12. Audits
-    require __DIR__ . '/UmrahCab/AuditRoutes.php';
-
-    // 13. Followups
-    require __DIR__ . '/UmrahCab/FollowupRoutes.php';
-
-    // 14. Price List Matrix
-    require __DIR__ . '/UmrahCab/PriceListRoutes.php';
-
-    // 15. Balance Summary
-    require __DIR__ . '/UmrahCab/BalanceRoutes.php';
-
-    // 16. User Management
-    require __DIR__ . '/UmrahCab/UserRoutes.php';
-
-    // 17. Performance Reports
-    require __DIR__ . '/UmrahCab/PerformanceRoutes.php';
-
-    // 18. B2B Company Panel Routes
+    // B2B & Driver Portal
     require __DIR__ . '/UmrahCab/CompanyPanelRoutes.php';
-
-    // 19. Admin Chat Support Routes
-    require __DIR__ . '/UmrahCab/ChatRoutes.php';
-
-    // 20. Hotels
-    require __DIR__ . '/UmrahCab/HotelRoutes.php';
-
-    // 21. Driver Portal Routes
     require __DIR__ . '/UmrahCab/DriverRoutes.php';
 
-    // 22. Driver Management Routes
-    require __DIR__ . '/UmrahCab/DriverManageRoutes.php';
+    // Mixed access modules (split internally into public/admin)
+    require __DIR__ . '/UmrahCab/BookingRoutes.php';
+    require __DIR__ . '/UmrahCab/ServiceRoutes.php';
+    require __DIR__ . '/UmrahCab/FlightRoutes.php';
+    require __DIR__ . '/UmrahCab/TrainRoutes.php';
+    require __DIR__ . '/UmrahCab/HotelRoutes.php';
 
-    // 23. Sub-Admin Management Routes
-    require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
+    // ---------------------------------------------------------
+    // 2. Strictly Administrative Control Routes (Admin Only)
+    // ---------------------------------------------------------
+    Route::middleware([AttachJwtFromCookie::class, AuthenticateAdmin::class])->group(function () {
+        // Fleet Management
+        require __DIR__ . '/UmrahCab/FleetRoutes.php';
 
-    // 24. Website Global Settings Routes
-    require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
+        // Customers & Companies
+        require __DIR__ . '/UmrahCab/CustomerRoutes.php';
+        require __DIR__ . '/UmrahCab/CompanyRoutes.php';
+
+        // Financials & Ledgers
+        require __DIR__ . '/UmrahCab/InvoiceRoutes.php';
+        require __DIR__ . '/UmrahCab/LedgerRoutes.php';
+        require __DIR__ . '/UmrahCab/PaymentRoutes.php';
+        require __DIR__ . '/UmrahCab/BalanceRoutes.php';
+
+        // Audits, Followups, Performance
+        require __DIR__ . '/UmrahCab/AuditRoutes.php';
+        require __DIR__ . '/UmrahCab/FollowupRoutes.php';
+        require __DIR__ . '/UmrahCab/PerformanceRoutes.php';
+
+        // Settings, Notices, Price Matrix, Users
+        require __DIR__ . '/UmrahCab/NoticeRoutes.php';
+        require __DIR__ . '/UmrahCab/PriceListRoutes.php';
+        require __DIR__ . '/UmrahCab/UserRoutes.php';
+        require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
+        require __DIR__ . '/UmrahCab/DriverManageRoutes.php';
+        require __DIR__ . '/UmrahCab/ChatRoutes.php';
+        require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
+    });
 });

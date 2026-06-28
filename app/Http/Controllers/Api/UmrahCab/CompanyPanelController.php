@@ -254,4 +254,35 @@ class CompanyPanelController extends Controller
 
         $unlinkedBookingsQuery->update(['customer_id' => $customer->id]);
     }
+
+    public function uploadDocument(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'file' => 'required|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx,xls,xlsx|max:10240', // 10MB limit
+        ]);
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $originalName = $file->getClientOriginalName();
+            $extension = $file->getClientOriginalExtension();
+            $filename = uniqid() . '_' . time() . '.' . $extension;
+            
+            // Store locally in public/uploads/documents/
+            $file->move(public_path('uploads/documents'), $filename);
+            $url = asset('uploads/documents/' . $filename);
+
+            return response()->json([
+                'success' => true,
+                'url' => $url,
+                'name' => $originalName,
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file uploaded'], 400);
+    }
 }

@@ -99,8 +99,8 @@ class UcDriverEntryController extends Controller
             $mic = $validated['mic'] ?? 0;
 
             // Excel row showed Rate + Voucher + Cash = Total, but let's do the full net balance formula or simple sum
-            // Let's store net cash flow or earnings:
-            $validated['total'] = ($rate + $voucher + $cash) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            // Let's store net cash flow:
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
         }
 
         $validated['is_locked'] = true; // Locked by default on submission
@@ -163,7 +163,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($rate + $voucher + $cash) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
         }
 
         // If it was edited, lock it again
@@ -226,7 +226,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($rate + $voucher + $cash) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
         }
 
         $validated['is_locked'] = $request->input('is_locked', true);
@@ -281,7 +281,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($rate + $voucher + $cash) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
         }
 
         if ($request->has('is_locked')) {

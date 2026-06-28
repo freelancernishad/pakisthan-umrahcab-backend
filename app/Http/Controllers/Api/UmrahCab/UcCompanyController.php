@@ -32,6 +32,7 @@ class UcCompanyController extends Controller
             'ledger_frequency' => 'nullable|string',
             'tomorrow_reminder' => 'nullable|boolean',
             'exempt_bulk_lock' => 'nullable|boolean',
+            'price_group' => 'nullable|string',
         ]);
 
         if (isset($validated['logo_path']) && preg_match('/^data:image\/(\w+);base64,/', $validated['logo_path'], $type)) {
@@ -83,6 +84,7 @@ class UcCompanyController extends Controller
             'ledger_frequency' => 'nullable|string',
             'tomorrow_reminder' => 'nullable|boolean',
             'exempt_bulk_lock' => 'nullable|boolean',
+            'price_group' => 'nullable|string',
         ]);
 
         if (isset($validated['logo_path']) && preg_match('/^data:image\/(\w+);base64,/', $validated['logo_path'], $type)) {

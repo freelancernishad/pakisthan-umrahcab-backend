@@ -28,7 +28,8 @@ class UcCompany extends Authenticatable implements JWTSubject
         'remarks',
         'ledger_frequency',
         'tomorrow_reminder',
-        'exempt_bulk_lock'
+        'exempt_bulk_lock',
+        'price_group'
     ];
 
     protected $hidden = [

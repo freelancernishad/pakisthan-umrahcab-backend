@@ -10,6 +10,7 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
     Route::middleware(AuthenticateAdminOrCompany::class)->group(function () {
         Route::get('/locations', [UcPriceListController::class, 'locations']);
         Route::get('/price-list', [UcPriceListController::class, 'index']);
+        Route::get('/price-list/groups', [UcPriceListController::class, 'groups']);
     });
 
     Route::middleware(AuthenticateAdmin::class)->group(function () {

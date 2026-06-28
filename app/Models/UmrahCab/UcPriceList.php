@@ -21,7 +21,8 @@ class UcPriceList extends Model
         'van_price',
         'van_dates',
         'coach_price',
-        'coach_dates'
+        'coach_dates',
+        'custom_prices'
     ];
 
     protected $casts = [
@@ -29,5 +30,6 @@ class UcPriceList extends Model
         'suv_price' => 'float',
         'van_price' => 'float',
         'coach_price' => 'float',
+        'custom_prices' => 'array'
     ];
 }

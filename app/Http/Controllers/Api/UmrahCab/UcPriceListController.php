@@ -95,6 +95,7 @@ class UcPriceListController extends Controller
             'coach_price' => 'nullable|numeric',
             'coach_dates' => 'nullable|string',
             'group_name' => 'nullable|string',
+            'custom_prices' => 'nullable|array',
         ]);
 
         $priceList = UcPriceList::findOrFail($id);
@@ -169,6 +170,7 @@ class UcPriceListController extends Controller
             'van_dates' => 'nullable|string',
             'coach_price' => 'nullable|numeric',
             'coach_dates' => 'nullable|string',
+            'custom_prices' => 'nullable|array',
         ]);
 
         $priceList = UcPriceList::create($validated);

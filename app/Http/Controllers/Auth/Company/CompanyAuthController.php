@@ -54,6 +54,10 @@ class CompanyAuthController extends Controller
                 'email' => $company->email,
                 'phone' => $company->phone,
                 'logo_path' => $company->logo_path,
+                'price_group' => $company->price_group,
+                'invoice' => $company->invoice,
+                'vouchers' => $company->vouchers,
+                'reminders' => $company->reminders,
                 'guard' => 'company'
             ];
 

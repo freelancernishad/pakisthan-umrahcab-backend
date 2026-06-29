@@ -15,6 +15,7 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
         Route::get('invoices', [CompanyPanelController::class, 'invoices']);
         Route::get('ledgers', [CompanyPanelController::class, 'ledgers']);
         Route::get('payments', [CompanyPanelController::class, 'payments']);
+        Route::post('payments', [CompanyPanelController::class, 'createPayment']);
         
         // Support Chat Routes
         Route::get('chat', [UcChatController::class, 'getCompanyMessages']);

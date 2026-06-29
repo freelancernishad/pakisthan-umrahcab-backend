@@ -285,4 +285,50 @@ class CompanyPanelController extends Controller
 
         return response()->json(['success' => false, 'message' => 'No file uploaded'], 400);
     }
+
+    public function createPayment(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'method' => 'required|string',
+            'amount' => 'required|numeric',
+            'currency' => 'required|string',
+            'transaction_ref' => 'nullable|string',
+            'proof_details' => 'nullable|string',
+            'proof_file' => 'nullable',
+        ]);
+
+        $validated['company'] = $company->name;
+        $validated['custom_id'] = 'PAY-' . rand(9000, 9999);
+        $validated['date'] = date('Y-m-d');
+        $validated['status'] = 'Pending';
+
+        if ($request->hasFile('proof_file')) {
+            $file = $request->file('proof_file');
+            $filename = 'proof_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            
+            // Upload to S3 if configured, otherwise fall back to local disk
+            if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.secret') && config('filesystems.disks.s3.bucket')) {
+                $path = \Illuminate\Support\Facades\Storage::disk('s3')->putFileAs('proofs', $file, $filename);
+                $proofPath = \Illuminate\Support\Facades\Storage::disk('s3')->url($path);
+            } else {
+                $file->move(public_path('uploads/proofs'), $filename);
+                $proofPath = '/uploads/proofs/' . $filename;
+            }
+            
+            $validated['proof_file'] = $proofPath;
+        }
+
+        $payment = UcPayment::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'General payment logged successfully!',
+            'data' => $payment
+        ], 201);
+    }
 }

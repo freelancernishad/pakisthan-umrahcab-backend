@@ -51,6 +51,25 @@ class UcBookingController extends Controller
             $validated['customer_id'] = $this->resolveCustomerId($validated);
         }
 
+        // Proactive Balance Check for B2B agent bookings
+        $customer = \App\Models\UmrahCab\UcCustomer::find($validated['customer_id']);
+        if ($customer && !empty($customer->company)) {
+            $companyName = $customer->company;
+            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $companyName)->orderBy('id', 'desc')->first();
+            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+            $amount = $validated['car_price'];
+
+            // Enforce balance verification unless performed by an authenticated administrator
+            if (!\Illuminate\Support\Facades\Auth::guard('admin')->check()) {
+                if ($lastBalance < $amount) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Insufficient balance! Your current balance is SAR " . number_format($lastBalance, 2) . ", but this booking requires SAR " . number_format($amount, 2) . ". Please deposit funds."
+                    ], 400);
+                }
+            }
+        }
+
         $validated['booking_code'] = 'UCB-' . rand(100000, 999999);
         $validated['status'] = 'Pending Check';
 

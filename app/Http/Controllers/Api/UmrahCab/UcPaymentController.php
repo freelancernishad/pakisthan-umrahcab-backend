@@ -92,11 +92,42 @@ class UcPaymentController extends Controller
     {
         $validated = $request->validate([
             'status' => 'required|string',
+            'approved_amount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string',
         ]);
 
         $payment = UcPayment::findOrFail($id);
         $oldStatus = $payment->status;
         $newStatus = $validated['status'];
+        $approvedAmount = isset($validated['approved_amount']) && !is_null($validated['approved_amount']) ? floatval($validated['approved_amount']) : $payment->amount;
+
+        if ($request->has('notes') && !empty($request->notes)) {
+            $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approval Note: " . $request->notes . "]");
+        }
+
+        // If status is approved and approved_amount is less than original amount, we record a due amount
+        if (in_array(strtolower($newStatus), ['approved', 'success', 'verified']) && $approvedAmount < $payment->amount && $approvedAmount > 0) {
+            $dueAmount = $payment->amount - $approvedAmount;
+            
+            // Note: Since agent gets the full requested balance (e.g. 150), we DO NOT change the current payment's amount.
+            // We keep $payment->amount as requested so it credits the full amount to the ledger.
+            $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Payment: Received " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $dueAmount . "]");
+
+            // Create a new pending payment for the remaining due.
+            // Since they already got the full credit, this due payment when approved should NOT credit the ledger again.
+            UcPayment::create([
+                'custom_id' => 'PAY-' . rand(9000, 9999),
+                'company' => $payment->company,
+                'date' => date('Y-m-d'),
+                'method' => $payment->method,
+                'amount' => $dueAmount,
+                'currency' => $payment->currency,
+                'status' => 'Pending',
+                'transaction_ref' => $payment->custom_id . ' (Due Payment)',
+                'proof_details' => 'Auto-generated outstanding due payment for ' . $payment->custom_id . '. (No additional ledger credit on approval)',
+                'proof_file' => $payment->proof_file
+            ]);
+        }
 
         $payment->status = $newStatus;
         $payment->save();
@@ -106,20 +137,46 @@ class UcPaymentController extends Controller
         $isOldCleared = in_array(strtolower($oldStatus), ['approved', 'success', 'verified']);
 
         if ($isNewCleared && !$isOldCleared) {
-            // Fetch last balance to calculate next balance
-            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
-            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
-            $newBalance = $lastBalance + $payment->amount;
+            // Check if this is an auto-generated due payment (so it doesn't double-credit the ledger)
+            $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+                             (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
+            
+            if (!$isDuePayment) {
+                // Fetch last balance to calculate next balance
+                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                $newBalance = $lastBalance + $payment->amount;
 
-            \App\Models\UmrahCab\UcLedger::create([
-                'company' => $payment->company,
-                'custom_id' => 'LED-' . rand(1000, 9999),
-                'date' => date('Y-m-d'),
-                'description' => 'Payment Cleared: ' . ($payment->custom_id ?? 'PAY-'.$payment->id),
-                'debit' => 0,
-                'credit' => $payment->amount,
-                'balance' => $newBalance
-            ]);
+                \App\Models\UmrahCab\UcLedger::create([
+                    'company' => $payment->company,
+                    'custom_id' => 'LED-' . rand(1000, 9999),
+                    'date' => date('Y-m-d'),
+                    'description' => 'Payment Cleared: ' . ($payment->custom_id ?? 'PAY-'.$payment->id),
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                    'balance' => $newBalance
+                ]);
+            }
+        } elseif (!$isNewCleared && $isOldCleared) {
+            // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
+            $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+                             (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
+
+            if (!$isDuePayment) {
+                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                $newBalance = $lastBalance - $payment->amount;
+
+                \App\Models\UmrahCab\UcLedger::create([
+                    'company' => $payment->company,
+                    'custom_id' => 'LED-' . rand(1000, 9999),
+                    'date' => date('Y-m-d'),
+                    'description' => 'Payment Rejected/Revoked: ' . ($payment->custom_id ?? 'PAY-'.$payment->id),
+                    'debit' => $payment->amount,
+                    'credit' => 0,
+                    'balance' => $newBalance
+                ]);
+            }
         }
 
         return response()->json([

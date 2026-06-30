@@ -202,12 +202,23 @@ class CompanyPanelController extends Controller
 
         $validated['company'] = $company->name;
 
+        // Fallback: fill client's last message if notes/remarks are empty
+        if (empty($validated['notes'])) {
+            $lastChatMessage = \App\Models\UmrahCab\UcChatMessage::where('company_id', $company->id)
+                ->where('sender_type', 'company')
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($lastChatMessage && !empty($lastChatMessage->message)) {
+                $validated['notes'] = $lastChatMessage->message;
+            }
+        }
+
         if (empty($validated['contact'])) {
             $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
             $emailInfo = $request->email ? " | Email: {$request->email}" : "";
             $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
             $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
-            $notesInfo = $request->notes ? " | Notes: {$request->notes}" : "";
+            $notesInfo = (isset($validated['notes']) && $validated['notes']) ? " | Notes: {$validated['notes']}" : "";
             $validated['contact'] = trim("{$phones}{$emailInfo}{$passportInfo}{$hotelInfo}{$notesInfo}") ?: 'N/A';
         }
 

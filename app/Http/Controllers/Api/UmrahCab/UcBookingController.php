@@ -56,6 +56,26 @@ class UcBookingController extends Controller
 
         $booking = UcBooking::create($validated);
 
+        // Charge B2B agent balance if booking is created under a company
+        $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
+        if ($customer && !empty($customer->company)) {
+            $companyName = $customer->company;
+            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $companyName)->orderBy('id', 'desc')->first();
+            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+            $amount = $booking->car_price;
+            $newBalance = $lastBalance - $amount;
+
+            \App\Models\UmrahCab\UcLedger::create([
+                'company' => $companyName,
+                'custom_id' => 'LED-' . rand(1000, 9999),
+                'date' => date('Y-m-d'),
+                'description' => 'Booking Created: ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                'debit' => $amount,
+                'credit' => 0,
+                'balance' => $newBalance
+            ]);
+        }
+
         return response()->json([
             'success' => true,
             'message' => 'Booking created successfully!',
@@ -92,6 +112,7 @@ class UcBookingController extends Controller
     public function update(Request $request, $id)
     {
         $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        $oldStatus = $booking->status;
 
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
@@ -121,6 +142,48 @@ class UcBookingController extends Controller
         }
 
         $booking->update($validated);
+
+        // Refund/Charge logic on status change for B2B agent
+        $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
+        if ($customer && !empty($customer->company)) {
+            $companyName = $customer->company;
+            $isNewCancelled = in_array(strtolower($booking->status), ['cancelled', 'rejected']) || str_contains(strtolower($booking->status), 'cancel') || str_contains(strtolower($booking->status), 'reject');
+            $isOldCancelled = in_array(strtolower($oldStatus), ['cancelled', 'rejected']) || str_contains(strtolower($oldStatus), 'cancel') || str_contains(strtolower($oldStatus), 'reject');
+
+            if ($isNewCancelled && !$isOldCancelled) {
+                // Refund: Credit booking price back to ledger
+                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $companyName)->orderBy('id', 'desc')->first();
+                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                $amount = $booking->car_price;
+                $newBalance = $lastBalance + $amount;
+
+                \App\Models\UmrahCab\UcLedger::create([
+                    'company' => $companyName,
+                    'custom_id' => 'LED-' . rand(1000, 9999),
+                    'date' => date('Y-m-d'),
+                    'description' => 'Booking Refund (Admin Rejected): ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                    'debit' => 0,
+                    'credit' => $amount,
+                    'balance' => $newBalance
+                ]);
+            } elseif (!$isNewCancelled && $isOldCancelled) {
+                // Re-charge: Debit booking price from ledger
+                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $companyName)->orderBy('id', 'desc')->first();
+                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                $amount = $booking->car_price;
+                $newBalance = $lastBalance - $amount;
+
+                \App\Models\UmrahCab\UcLedger::create([
+                    'company' => $companyName,
+                    'custom_id' => 'LED-' . rand(1000, 9999),
+                    'date' => date('Y-m-d'),
+                    'description' => 'Booking Re-charged: ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                    'debit' => $amount,
+                    'credit' => 0,
+                    'balance' => $newBalance
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,

@@ -16,6 +16,7 @@ class UcPaymentController extends Controller
         $method = $request->query('method');
         $startDate = $request->query('start_date');
         $endDate = $request->query('end_date');
+        $status = $request->query('status');
 
         $query = UcPayment::orderBy('id', 'desc');
 
@@ -34,6 +35,10 @@ class UcPaymentController extends Controller
 
         if ($method && $method !== 'all') {
             $query->where('method', $method);
+        }
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
         }
 
         if ($startDate) {

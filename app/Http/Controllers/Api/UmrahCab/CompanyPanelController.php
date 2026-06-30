@@ -176,7 +176,12 @@ class CompanyPanelController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
+        $status = $request->query('status');
         $query = UcPayment::where('company', $company->name)->orderBy('id', 'desc');
+
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
 
         return response()->json($query->get());
     }

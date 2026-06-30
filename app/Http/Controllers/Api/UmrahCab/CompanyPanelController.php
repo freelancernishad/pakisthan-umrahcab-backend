@@ -407,4 +407,92 @@ class CompanyPanelController extends Controller
             'data' => $payment
         ], 201);
     }
+
+    public function getDocuments(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $customerId = $request->query('customer_id');
+        if (!$customerId) {
+            return response()->json(['message' => 'Customer ID is required'], 400);
+        }
+
+        // Verify customer belongs to the company
+        $customer = UcCustomer::where('company', $company->name)->where('id', $customerId)->firstOrFail();
+
+        $documents = \App\Models\UmrahCab\UcDocument::where('customer_id', $customer->id)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        return response()->json($documents);
+    }
+
+    public function storeDocument(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:uc_customers,id',
+            'title' => 'nullable|string',
+            'document_file' => 'required|file|mimes:pdf,png,jpg,jpeg,doc,docx,xls,xlsx|max:10240', // 10MB max
+        ]);
+
+        // Verify customer belongs to the company
+        $customer = UcCustomer::where('company', $company->name)->where('id', $validated['customer_id'])->firstOrFail();
+
+        $file = $request->file('document_file');
+        $originalName = $file->getClientOriginalName();
+        $title = $validated['title'] ?: pathinfo($originalName, PATHINFO_FILENAME);
+        $fileType = $file->getClientOriginalExtension();
+        $filename = 'doc_' . time() . '_' . uniqid() . '.' . $fileType;
+
+        $file->move(public_path('uploads/documents'), $filename);
+        $filePath = '/uploads/documents/' . $filename;
+
+        $document = \App\Models\UmrahCab\UcDocument::create([
+            'customer_id' => $customer->id,
+            'title' => $title,
+            'file_path' => $filePath,
+            'file_type' => $fileType,
+            'uploaded_by' => $company->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document uploaded successfully!',
+            'data' => $document
+        ], 201);
+    }
+
+    public function deleteDocument($id)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $document = \App\Models\UmrahCab\UcDocument::findOrFail($id);
+
+        // Verify customer of the document belongs to the company
+        $customer = UcCustomer::where('company', $company->name)->where('id', $document->customer_id)->firstOrFail();
+
+        // Delete from public folder
+        $filePath = public_path($document->file_path);
+        if (file_exists($filePath)) {
+            @unlink($filePath);
+        }
+
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document deleted successfully!'
+        ]);
+    }
 }

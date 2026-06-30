@@ -26,6 +26,9 @@ Route::prefix('umrahcab')->group(function () {
     require __DIR__ . '/UmrahCab/NoticeRoutes.php';
     require __DIR__ . '/UmrahCab/PriceListRoutes.php';
 
+    // Public download route for documents/files
+    Route::get('/download-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'downloadFile']);
+
     // ---------------------------------------------------------
     // 2. Strictly Administrative Control Routes (Admin Only)
     // ---------------------------------------------------------
@@ -51,5 +54,6 @@ Route::prefix('umrahcab')->group(function () {
         require __DIR__ . '/UmrahCab/DriverManageRoutes.php';
         require __DIR__ . '/UmrahCab/ChatRoutes.php';
         require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
+        require __DIR__ . '/UmrahCab/DocumentRoutes.php';
     });
 });

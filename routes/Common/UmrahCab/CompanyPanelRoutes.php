@@ -24,6 +24,11 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
 
         // Upload Document Route
         Route::post('upload-document', [CompanyPanelController::class, 'uploadDocument']);
+
+        // Customer Document Management Routes
+        Route::get('customer-documents', [CompanyPanelController::class, 'getDocuments']);
+        Route::post('customer-documents', [CompanyPanelController::class, 'storeDocument']);
+        Route::delete('customer-documents/{id}', [CompanyPanelController::class, 'deleteDocument']);
     });
 });
 

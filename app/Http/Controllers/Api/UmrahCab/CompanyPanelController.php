@@ -144,6 +144,66 @@ class CompanyPanelController extends Controller
         return response()->json($query->get());
     }
 
+    public function customerDetails($id)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $customer = UcCustomer::where('company', $company->name)
+            ->where(function($q) use ($id) {
+                $q->where('id', $id)
+                  ->orWhere('custom_id', $id);
+            })
+            ->firstOrFail();
+
+        $this->syncUnlinkedBookingsForCustomer($customer);
+
+        $bookings = \App\Models\UmrahCab\UcBooking::where('customer_id', $customer->id)->get();
+        $services = \App\Models\UmrahCab\UcService::where('customer_id', $customer->id)->get();
+        $flights = \App\Models\UmrahCab\UcFlight::where('customer_id', $customer->id)->get();
+        $trains = \App\Models\UmrahCab\UcTrain::where('customer_id', $customer->id)->get();
+        $hotels = \App\Models\UmrahCab\UcHotel::where('customer_id', $customer->id)->get();
+
+        return response()->json([
+            'customer' => $customer,
+            'bookings' => $bookings,
+            'services' => $services,
+            'flights' => $flights,
+            'trains' => $trains,
+            'hotels' => $hotels
+        ]);
+    }
+
+    private function syncUnlinkedBookingsForCustomer(UcCustomer $customer)
+    {
+        $unlinkedBookingsQuery = \App\Models\UmrahCab\UcBooking::whereNull('customer_id');
+
+        $unlinkedBookingsQuery->where(function($q) use ($customer) {
+            $q->where('full_name', 'like', trim($customer->name));
+
+            if (!empty($customer->email)) {
+                $q->orWhere('email', 'like', '%' . trim($customer->email) . '%');
+            }
+
+            if (!empty($customer->phone)) {
+                $phone = trim($customer->phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+            if (!empty($customer->secondary_phone)) {
+                $phone = trim($customer->secondary_phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+            if (!empty($customer->alternative_phone)) {
+                $phone = trim($customer->alternative_phone);
+                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            }
+        });
+
+        $unlinkedBookingsQuery->update(['customer_id' => $customer->id]);
+    }
+
     public function invoices(Request $request)
     {
         $company = $this->getCompany();

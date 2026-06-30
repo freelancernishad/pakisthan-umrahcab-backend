@@ -12,6 +12,7 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
         Route::get('bookings', [CompanyPanelController::class, 'bookings']);
         Route::get('customers', [CompanyPanelController::class, 'customers']);
         Route::post('customers', [CompanyPanelController::class, 'createCustomer']);
+        Route::get('customers/{id}', [CompanyPanelController::class, 'customerDetails']);
         Route::get('invoices', [CompanyPanelController::class, 'invoices']);
         Route::get('ledgers', [CompanyPanelController::class, 'ledgers']);
         Route::get('payments', [CompanyPanelController::class, 'payments']);

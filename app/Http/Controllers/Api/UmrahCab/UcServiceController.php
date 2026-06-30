@@ -53,6 +53,11 @@ class UcServiceController extends Controller
 
     public function store(Request $request)
     {
+        $company = auth()->guard('company')->user();
+        if ($company && !$company->extra_services) {
+            return response()->json(['message' => 'Forbidden: Extra services module is not enabled for this company.'], 403);
+        }
+
         $validated = $request->validate([
             'customer_id' => 'nullable|integer|exists:uc_customers,id',
             'name' => 'required|string',

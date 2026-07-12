@@ -22,10 +22,11 @@ class AuthenticateAdminOrCompany
             'authorization_header' => $request->header('Authorization') ? substr($request->header('Authorization'), 0, 22) . '...' : null,
             'admin_check' => Auth::guard('admin')->check(),
             'company_check' => Auth::guard('company')->check(),
+            'driver_check' => Auth::guard('driver')->check(),
         ]);
 
-        // Check if the user is authenticated as either admin or company
-        if (!Auth::guard('admin')->check() && !Auth::guard('company')->check()) {
+        // Check if the user is authenticated as either admin, company, or driver
+        if (!Auth::guard('admin')->check() && !Auth::guard('company')->check() && !Auth::guard('driver')->check()) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json(['message' => 'Unauthorized'], 401);
             }

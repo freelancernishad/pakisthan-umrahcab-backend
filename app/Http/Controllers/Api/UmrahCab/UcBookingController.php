@@ -45,6 +45,9 @@ class UcBookingController extends Controller
             'whatsapp' => 'required|string',
             'flight_no' => 'nullable|string',
             'notes' => 'nullable|string',
+            'payment_method' => 'nullable|string',
+            'received_amount' => 'nullable|numeric',
+            'pending_amount' => 'nullable|numeric',
         ]);
 
         if (empty($validated['customer_id'])) {
@@ -148,6 +151,9 @@ class UcBookingController extends Controller
             'flight_no' => 'nullable|string',
             'notes' => 'nullable|string',
             'status' => 'nullable|string',
+            'payment_method' => 'nullable|string',
+            'received_amount' => 'nullable|numeric',
+            'pending_amount' => 'nullable|numeric',
         ]);
 
         if (!array_key_exists('customer_id', $validated)) {

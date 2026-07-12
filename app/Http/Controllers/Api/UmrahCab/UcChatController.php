@@ -31,7 +31,7 @@ class UcChatController extends Controller
                         \Illuminate\Support\Facades\File::makeDirectory($directory, 0755, true, true);
                     }
                     $file->move($directory, $filename);
-                    return 'uploads/chat/' . $filename;
+                    return '/uploads/chat/' . $filename;
                 }
             }
         }

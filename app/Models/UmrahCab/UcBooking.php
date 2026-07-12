@@ -26,10 +26,15 @@ class UcBooking extends Model
         'whatsapp',
         'flight_no',
         'notes',
-        'status'
+        'status',
+        'payment_method',
+        'received_amount',
+        'pending_amount'
     ];
 
     protected $casts = [
         'car_price' => 'float',
+        'received_amount' => 'float',
+        'pending_amount' => 'float',
     ];
 }

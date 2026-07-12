@@ -67,6 +67,7 @@ class UcDriverEntryController extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date',
+            'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',
             'agent' => 'nullable|string|max:255',
@@ -84,7 +85,9 @@ class UcDriverEntryController extends Controller
         ]);
 
         $validated['driver_id'] = $driver->id;
-        $validated['vehicle_id'] = $driver->vehicle_id; // Automatically assign driver's current vehicle
+        if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
+            $validated['vehicle_id'] = $driver->vehicle_id;
+        }
         
         // Calculate total if not explicitly provided
         if (!isset($validated['total']) || $validated['total'] === null) {
@@ -136,6 +139,7 @@ class UcDriverEntryController extends Controller
 
         $validated = $request->validate([
             'date' => 'required|date',
+            'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',
             'agent' => 'nullable|string|max:255',
@@ -151,6 +155,10 @@ class UcDriverEntryController extends Controller
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
         ]);
+
+        if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
+            $validated['vehicle_id'] = $driver->vehicle_id;
+        }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
             $rate = $validated['rate'] ?? 0;
@@ -194,6 +202,7 @@ class UcDriverEntryController extends Controller
     {
         $validated = $request->validate([
             'driver_id' => 'required|exists:uc_drivers,id',
+            'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'date' => 'required|date',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',
@@ -213,7 +222,9 @@ class UcDriverEntryController extends Controller
         ]);
 
         $driver = UcDriver::findOrFail($validated['driver_id']);
-        $validated['vehicle_id'] = $driver->vehicle_id;
+        if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
+            $validated['vehicle_id'] = $driver->vehicle_id;
+        }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
             $rate = $validated['rate'] ?? 0;
@@ -249,6 +260,7 @@ class UcDriverEntryController extends Controller
 
         $validated = $request->validate([
             'driver_id' => 'required|exists:uc_drivers,id',
+            'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'date' => 'required|date',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',
@@ -268,7 +280,9 @@ class UcDriverEntryController extends Controller
         ]);
 
         $driver = UcDriver::findOrFail($validated['driver_id']);
-        $validated['vehicle_id'] = $driver->vehicle_id;
+        if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
+            $validated['vehicle_id'] = $driver->vehicle_id;
+        }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
             $rate = $validated['rate'] ?? 0;

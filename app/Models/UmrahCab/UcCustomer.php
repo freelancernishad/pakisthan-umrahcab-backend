@@ -26,4 +26,20 @@ class UcCustomer extends Model
         'registered_by',
         'last_update'
     ];
+
+    public function bookings()
+    {
+        return $this->hasMany(\App\Models\UmrahCab\UcBooking::class, 'customer_id');
+    }
+
+    public function flights()
+    {
+        return $this->hasMany(\App\Models\UmrahCab\UcFlight::class, 'customer_id');
+    }
+
+    public function trains()
+    {
+        return $this->hasMany(\App\Models\UmrahCab\UcTrain::class, 'customer_id');
+    }
 }
+

@@ -14,7 +14,7 @@ class UcCustomerController extends Controller
         $company = $request->query('company');
         $perPage = $request->query('per_page', 10);
 
-        $query = UcCustomer::query()->orderBy('id', 'desc');
+        $query = UcCustomer::with(['bookings', 'flights', 'trains'])->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {

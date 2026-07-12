@@ -28,6 +28,7 @@ Route::prefix('umrahcab')->group(function () {
 
     // Public download route for documents/files
     Route::get('/download-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'downloadFile']);
+    Route::get('/view-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'viewFile']);
 
     // ---------------------------------------------------------
     // 2. Strictly Administrative Control Routes (Admin Only)

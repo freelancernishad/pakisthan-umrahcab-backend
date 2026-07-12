@@ -131,7 +131,7 @@ class CompanyPanelController extends Controller
         }
 
         $search = $request->query('search');
-        $query = UcCustomer::where('company', $company->name)->orderBy('id', 'desc');
+        $query = UcCustomer::with(['bookings', 'flights', 'trains'])->where('company', $company->name)->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {

@@ -112,4 +112,30 @@ class UcDocumentController extends Controller
 
         return response()->download($fullPath);
     }
+
+    public function viewFile(Request $request)
+    {
+        $path = $request->query('path');
+        if (!$path) {
+            return abort(400, 'Path is required.');
+        }
+
+        // Normalize path to always start with a slash for validation
+        $normalizedPath = $path;
+        if (!str_starts_with($normalizedPath, '/')) {
+            $normalizedPath = '/' . $normalizedPath;
+        }
+
+        // Standard path traversal prevention
+        if (str_contains($normalizedPath, '..') || !str_starts_with($normalizedPath, '/uploads/')) {
+            return abort(403, 'Unauthorized access.');
+        }
+
+        $fullPath = public_path($normalizedPath);
+        if (!file_exists($fullPath)) {
+            return abort(404, 'File not found.');
+        }
+
+        return response()->file($fullPath);
+    }
 }

@@ -11,7 +11,7 @@ class UcBookingController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $query = UcBooking::query()->orderBy('id', 'desc');
+        $query = UcBooking::query()->with('driver')->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -116,7 +116,7 @@ class UcBookingController extends Controller
 
     public function show($id)
     {
-        $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        $booking = UcBooking::with('driver')->where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
         return response()->json($booking);
     }
 
@@ -138,6 +138,7 @@ class UcBookingController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'pickup' => 'nullable|string',
             'destination' => 'nullable|string',
             'date' => 'nullable|date',
@@ -265,5 +266,34 @@ class UcBookingController extends Controller
 
         $customer = $customerQuery->first();
         return $customer ? $customer->id : null;
+    }
+
+    public function upcomingReminders()
+    {
+        $enabled = \App\Models\UmrahCab\UcWebsiteSetting::getValue('ride_notification_enabled', '1');
+        if ($enabled !== '1' && $enabled !== 1 && $enabled !== 'true') {
+            return response()->json([]);
+        }
+
+        $now = now();
+        $twentyFourHoursFromNow = now()->addHours(24);
+
+        // Fetch bookings for today and tomorrow where driver is not assigned and status is not Cancelled/Rejected
+        $bookings = UcBooking::with('driver')
+            ->whereNull('driver_id')
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->whereBetween('date', [now()->toDateString(), now()->addDay()->toDateString()])
+            ->get();
+
+        $upcomingBookings = $bookings->filter(function($booking) use ($now, $twentyFourHoursFromNow) {
+            try {
+                $bookingDateTime = \Carbon\Carbon::parse($booking->date . ' ' . $booking->time);
+                return $bookingDateTime->between($now, $twentyFourHoursFromNow);
+            } catch (\Exception $e) {
+                return false;
+            }
+        });
+
+        return response()->json(array_values($upcomingBookings->toArray()));
     }
 }

@@ -13,6 +13,7 @@ class UcBooking extends Model
 
     protected $fillable = [
         'customer_id',
+        'driver_id',
         'booking_code',
         'pickup',
         'destination',
@@ -36,5 +37,11 @@ class UcBooking extends Model
         'car_price' => 'float',
         'received_amount' => 'float',
         'pending_amount' => 'float',
+        'driver_id' => 'integer',
     ];
+
+    public function driver()
+    {
+        return $this->belongsTo(UcDriver::class, 'driver_id');
+    }
 }

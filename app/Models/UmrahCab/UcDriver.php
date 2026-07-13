@@ -63,6 +63,7 @@ class UcDriver extends Authenticatable implements JWTSubject
             'name' => $this->name,
             'username' => $this->username,
             'phone' => $this->phone,
+            'email' => null, // Added to satisfy required_claims in config/jwt.php
             'guard' => 'driver',
             'model' => UcDriver::class
         ];

@@ -259,7 +259,7 @@ class CompanyPanelController extends Controller
             'phone' => 'nullable|string',
             'secondary_phone' => 'nullable|string',
             'alternative_phone' => 'nullable|string',
-            'email' => 'required|email',
+            'email' => 'nullable|email',
             'passport_no' => 'nullable|string',
             'hotel_info' => 'nullable|string',
             'notes' => 'nullable|string',

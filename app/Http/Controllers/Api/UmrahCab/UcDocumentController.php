@@ -43,7 +43,11 @@ class UcDocumentController extends Controller
         $filename = 'doc_' . time() . '_' . uniqid() . '.' . $fileType;
 
         // Save to public disk
-        $file->move(public_path('uploads/documents'), $filename);
+        $directory = public_path('uploads/documents');
+        if (!file_exists($directory)) {
+            mkdir($directory, 0777, true);
+        }
+        $file->move($directory, $filename);
         $filePath = '/uploads/documents/' . $filename;
 
         // Determine who uploaded it

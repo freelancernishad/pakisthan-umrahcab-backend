@@ -30,7 +30,8 @@ class UcBooking extends Model
         'status',
         'payment_method',
         'received_amount',
-        'pending_amount'
+        'pending_amount',
+        'driver_trip_status'
     ];
 
     protected $casts = [

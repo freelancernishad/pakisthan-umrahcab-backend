@@ -170,6 +170,7 @@ class UcBookingController extends Controller
             'payment_method' => 'nullable|string',
             'received_amount' => 'nullable|numeric',
             'pending_amount' => 'nullable|numeric',
+            'driver_trip_status' => 'nullable|string',
         ]);
 
         if (!array_key_exists('customer_id', $validated)) {

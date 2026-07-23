@@ -29,6 +29,9 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
         Route::get('customer-documents', [CompanyPanelController::class, 'getDocuments']);
         Route::post('customer-documents', [CompanyPanelController::class, 'storeDocument']);
         Route::delete('customer-documents/{id}', [CompanyPanelController::class, 'deleteDocument']);
+
+        // Drivers List Route
+        Route::get('drivers', [\App\Http\Controllers\Api\UmrahCab\UcDriverController::class, 'index']);
     });
 });
 

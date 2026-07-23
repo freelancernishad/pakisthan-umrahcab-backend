@@ -33,6 +33,7 @@ class UcBookingController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'pickup' => 'required|string',
             'destination' => 'required|string',
             'date' => 'required|date',
@@ -117,6 +118,13 @@ class UcBookingController extends Controller
     public function show($id)
     {
         $booking = UcBooking::with('driver')->where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        if (\Illuminate\Support\Facades\Auth::guard('company')->check()) {
+            $company = \Illuminate\Support\Facades\Auth::guard('company')->user();
+            $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
+            if (!$customer || $customer->company !== $company->name) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access to this booking.'], 403);
+            }
+        }
         return response()->json($booking);
     }
 
@@ -134,6 +142,13 @@ class UcBookingController extends Controller
     public function update(Request $request, $id)
     {
         $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        if (\Illuminate\Support\Facades\Auth::guard('company')->check()) {
+            $company = \Illuminate\Support\Facades\Auth::guard('company')->user();
+            $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
+            if (!$customer || $customer->company !== $company->name) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access to this booking.'], 403);
+            }
+        }
         $oldStatus = $booking->status;
 
         $validated = $request->validate([

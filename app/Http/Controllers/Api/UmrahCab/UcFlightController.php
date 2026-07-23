@@ -18,7 +18,7 @@ class UcFlightController extends Controller
         $endDate = $request->query('end_date');
         $perPage = $request->query('per_page', 10);
 
-        $query = UcFlight::with('customer')->orderBy('id', 'desc');
+        $query = UcFlight::with(['customer', 'driver'])->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -60,6 +60,7 @@ class UcFlightController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'flight_no' => 'required|string',
             'leg' => 'required|string',
             'date' => 'required|date',
@@ -89,7 +90,7 @@ class UcFlightController extends Controller
 
     public function show($id)
     {
-        $flight = UcFlight::with('customer')->find($id);
+        $flight = UcFlight::with(['customer', 'driver'])->find($id);
 
         if (!$flight) {
             return response()->json([
@@ -122,6 +123,7 @@ class UcFlightController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'flight_no' => 'required|string',
             'leg' => 'required|string',
             'date' => 'required|date',

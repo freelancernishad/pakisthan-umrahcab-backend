@@ -18,7 +18,7 @@ class UcTrainController extends Controller
         $endDate = $request->query('end_date');
         $perPage = $request->query('per_page', 10);
 
-        $query = UcTrain::with(['customer'])->orderBy('id', 'desc');
+        $query = UcTrain::with(['customer', 'driver'])->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -55,6 +55,7 @@ class UcTrainController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'train_no' => 'required|string',
             'leg' => 'required|string',
             'date' => 'required|date',
@@ -84,7 +85,7 @@ class UcTrainController extends Controller
 
     public function show($id)
     {
-        $train = UcTrain::with(['customer'])->find($id);
+        $train = UcTrain::with(['customer', 'driver'])->find($id);
 
         if (!$train) {
             return response()->json([
@@ -102,6 +103,7 @@ class UcTrainController extends Controller
             'data' => [
                 'id' => $train->id,
                 'customer_id' => $train->customer_id,
+                'driver_id' => $train->driver_id,
                 'custom_id' => $train->custom_id,
                 'train_no' => $train->train_no,
                 'leg' => $train->leg,
@@ -112,6 +114,7 @@ class UcTrainController extends Controller
                 'created_at' => $train->created_at,
                 'updated_at' => $train->updated_at,
                 'customer' => $train->customer,
+                'driver' => $train->driver,
                 'audits' => $audits
             ]
         ]);
@@ -130,6 +133,7 @@ class UcTrainController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'train_no' => 'required|string',
             'leg' => 'required|string',
             'date' => 'required|date',
@@ -140,6 +144,7 @@ class UcTrainController extends Controller
 
         $changes = [];
         if ($train->customer_id != $validated['customer_id']) $changes[] = "customer_id";
+        if (array_key_exists('driver_id', $validated) && $train->driver_id != $validated['driver_id']) $changes[] = "driver_id (" . ($train->driver_id ?? 'none') . " -> " . ($validated['driver_id'] ?? 'none') . ")";
         if ($train->train_no != $validated['train_no']) $changes[] = "train_no ({$train->train_no} -> {$validated['train_no']})";
         if ($train->leg != $validated['leg']) $changes[] = "leg ({$train->leg} -> {$validated['leg']})";
         if ($train->date != $validated['date']) $changes[] = "date ({$train->date} -> {$validated['date']})";

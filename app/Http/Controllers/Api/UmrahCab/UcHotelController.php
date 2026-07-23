@@ -16,7 +16,7 @@ class UcHotelController extends Controller
         $customerId = $request->query('customer_id');
         $type = $request->query('type');
 
-        $query = UcHotel::with('customer')->orderBy('id', 'desc');
+        $query = UcHotel::with(['customer', 'driver'])->orderBy('id', 'desc');
 
         if ($city) {
             $query->where('city', $city);
@@ -56,6 +56,7 @@ class UcHotelController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'active' => 'sometimes|integer|in:0,1',
@@ -81,7 +82,7 @@ class UcHotelController extends Controller
 
     public function show($id)
     {
-        $hotel = UcHotel::with('customer')->find($id);
+        $hotel = UcHotel::with(['customer', 'driver'])->find($id);
 
         if (!$hotel) {
             return response()->json([
@@ -109,6 +110,7 @@ class UcHotelController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
+            'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'active' => 'required|integer|in:0,1',

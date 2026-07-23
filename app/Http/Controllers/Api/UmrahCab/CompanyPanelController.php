@@ -77,7 +77,7 @@ class CompanyPanelController extends Controller
 
         $customerIds = UcCustomer::where('company', $company->name)->pluck('id');
         $search = $request->query('search');
-        $query = UcBooking::whereIn('customer_id', $customerIds)->orderBy('id', 'desc');
+        $query = UcBooking::whereIn('customer_id', $customerIds)->with('driver')->orderBy('id', 'desc');
 
         if ($search) {
             $query->where(function($q) use ($search) {

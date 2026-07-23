@@ -140,6 +140,7 @@ class UcTrainController extends Controller
             'time' => 'required',
             'route' => 'required|string',
             'status' => 'required|string',
+            'driver_trip_status' => 'nullable|string',
         ]);
 
         $changes = [];

@@ -19,7 +19,8 @@ class UcHotel extends Model
         'city',
         'active',
         'check_in',
-        'check_out'
+        'check_out',
+        'driver_trip_status'
     ];
 
     protected $casts = [

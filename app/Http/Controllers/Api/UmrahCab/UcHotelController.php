@@ -115,7 +115,8 @@ class UcHotelController extends Controller
             'city' => 'required|string|max:255',
             'active' => 'required|integer|in:0,1',
             'check_in' => 'nullable|string|max:255',
-            'check_out' => 'nullable|string|max:255'
+            'check_out' => 'nullable|string|max:255',
+            'driver_trip_status' => 'nullable|string'
         ]);
 
         if (empty($hotel->custom_id)) {

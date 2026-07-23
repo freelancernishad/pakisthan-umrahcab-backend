@@ -129,7 +129,8 @@ class UcFlightController extends Controller
             'date' => 'required|date',
             'time' => 'required',
             'route' => 'required|string',
-            'status' => 'required|string'
+            'status' => 'required|string',
+            'driver_trip_status' => 'nullable|string'
         ]);
 
         $changes = [];

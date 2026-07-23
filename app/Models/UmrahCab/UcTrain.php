@@ -20,7 +20,8 @@ class UcTrain extends Model
         'date',
         'time',
         'route',
-        'status'
+        'status',
+        'driver_trip_status'
     ];
 
     public function customer()

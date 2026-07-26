@@ -13,6 +13,9 @@ Route::get('/bookings/status/{code}', [UcBookingController::class, 'getStatus'])
 // Admin-only operations
 Route::middleware([AttachJwtFromCookie::class, AuthenticateAdmin::class])->group(function () {
     Route::get('/bookings/upcoming-reminders', [UcBookingController::class, 'upcomingReminders']);
+    Route::get('/bookings/reminders-list', [UcBookingController::class, 'remindersList']);
+    Route::post('/bookings/reminders-list/mark-sent', [UcBookingController::class, 'markReminderSent']);
+    Route::get('/bookings/reminders-list/{id}/history', [UcBookingController::class, 'reminderHistory']);
     Route::get('/bookings/summary', [UcBookingController::class, 'dashboardSummary']);
     Route::get('/bookings', [UcBookingController::class, 'index']);
 });

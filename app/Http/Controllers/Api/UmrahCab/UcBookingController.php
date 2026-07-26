@@ -74,6 +74,13 @@ class UcBookingController extends Controller
             }
         }
 
+        if (!isset($validated['received_amount']) || is_null($validated['received_amount'])) {
+            $validated['received_amount'] = 0;
+        }
+        if (!isset($validated['pending_amount']) || is_null($validated['pending_amount'])) {
+            $validated['pending_amount'] = 0;
+        }
+
         $validated['booking_code'] = 'UCB-' . rand(100000, 999999);
         $validated['status'] = 'Pending Check';
 
@@ -150,6 +157,8 @@ class UcBookingController extends Controller
             }
         }
         $oldStatus = $booking->status;
+        $oldDriverId = $booking->driver_id;
+        $oldDriverTripStatus = $booking->driver_trip_status;
 
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:uc_customers,id',
@@ -183,7 +192,59 @@ class UcBookingController extends Controller
             }
         }
 
+        if (array_key_exists('received_amount', $validated) && is_null($validated['received_amount'])) {
+            $validated['received_amount'] = 0;
+        }
+        if (array_key_exists('pending_amount', $validated) && is_null($validated['pending_amount'])) {
+            $validated['pending_amount'] = 0;
+        }
+
+        $driverChanged = false;
+        $tripStatusChanged = false;
+        $statusChanged = false;
+
+        if (array_key_exists('driver_id', $validated) && $validated['driver_id'] != $oldDriverId) {
+            $driverChanged = true;
+        }
+        if (array_key_exists('driver_trip_status', $validated) && $validated['driver_trip_status'] !== $oldDriverTripStatus) {
+            $tripStatusChanged = true;
+        }
+        if (array_key_exists('status', $validated) && $validated['status'] !== $oldStatus) {
+            $statusChanged = true;
+        }
+
+        if ($driverChanged || $tripStatusChanged || $statusChanged) {
+            $validated['reminder1_sent'] = false;
+            $validated['reminder2_sent'] = false;
+            $validated['reminder3_sent'] = false;
+        }
+
         $booking->update($validated);
+
+        if ($driverChanged || $tripStatusChanged) {
+            $newDriver = $booking->driver()->first();
+            $driverName = $newDriver ? $newDriver->name : 'No Driver';
+            \App\Models\UmrahCab\UcReminderLog::create([
+                'booking_id' => $booking->id,
+                'type' => 'BKG',
+                'reminder_type' => 4, // Driver Status Change System Log
+                'recipient' => 'System Update',
+                'driver_name' => $driverName,
+                'driver_trip_status' => $booking->driver_trip_status ?: 'N/A',
+            ]);
+        }
+
+        if ($statusChanged) {
+            $driverName = $booking->driver ? $booking->driver->name : null;
+            \App\Models\UmrahCab\UcReminderLog::create([
+                'booking_id' => $booking->id,
+                'type' => 'BKG',
+                'reminder_type' => 5, // Booking Status Change System Log
+                'recipient' => 'System Update',
+                'driver_name' => $driverName,
+                'driver_trip_status' => $booking->status ?: 'N/A',
+            ]);
+        }
 
         // Refund/Charge logic on status change for B2B agent
         $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
@@ -311,5 +372,137 @@ class UcBookingController extends Controller
         });
 
         return response()->json(array_values($upcomingBookings->toArray()));
+    }
+
+    public function remindersList(Request $request)
+    {
+        $date = $request->query('date', date('Y-m-d'));
+
+        $bookings = UcBooking::with(['driver', 'customer'])
+            ->where('date', $date)
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->get();
+
+        $services = \App\Models\UmrahCab\UcService::with('customer')
+            ->where('date', $date)
+            ->whereNotIn('status', ['Cancelled', 'Rejected'])
+            ->get();
+
+        $formattedBookings = $bookings->map(function ($b, $idx) {
+            return [
+                'id' => $b->booking_code ?: '#BKG-87' . ($b->id + 10),
+                'rawId' => (string) $b->id,
+                'type' => 'BKG',
+                'date' => $b->date,
+                'time' => $b->time,
+                'customerName' => $b->full_name ?: ($b->customer ? $b->customer->name : 'Guest'),
+                'companyName' => $b->customer ? $b->customer->company : 'Zahid Travels',
+                'details' => ($b->pickup ?: 'Jeddah Airport') . ' → ' . ($b->destination ?: 'Makkah Hotel'),
+                'vehicle' => $b->car_type ?: 'Sedan (Standard)',
+                'phones' => $b->whatsapp ? [$b->whatsapp] : ($b->customer && $b->customer->contact ? [explode(' ', $b->customer->contact)[0]] : ['+966501234567']),
+                'customerId' => $b->customer ? ($b->customer->custom_id ?: (string)$b->customer->id) : '1',
+                'driverName' => $b->driver ? $b->driver->name : null,
+                'driverPhone' => $b->driver ? $b->driver->phone : null,
+                'driverTripStatus' => $b->driver_trip_status ?: '',
+                'reminder1_sent' => (bool) $b->reminder1_sent,
+                'reminder2_sent' => (bool) $b->reminder2_sent,
+                'reminder3_sent' => (bool) $b->reminder3_sent,
+            ];
+        });
+
+        $formattedServices = $services->map(function ($s, $idx) {
+            return [
+                'id' => $s->custom_id ?: '#SRV-' . $s->id,
+                'rawId' => (string) $s->id,
+                'type' => 'SRV',
+                'date' => $s->date,
+                'time' => $s->time,
+                'customerName' => $s->customer ? $s->customer->name : 'Zubair Ahmad',
+                'companyName' => $s->customer ? $s->customer->company : 'Zahid Travels',
+                'details' => $s->name . ' (' . ($s->description ?: 'Service Details') . ')',
+                'vehicle' => 'N/A',
+                'phones' => $s->customer && $s->customer->contact ? [explode(' ', $s->customer->contact)[0]] : ['+966549876543'],
+                'customerId' => $s->customer ? ($s->customer->custom_id ?: (string)$s->customer->id) : '3',
+                'driverName' => null,
+                'driverPhone' => null,
+                'driverTripStatus' => '',
+                'reminder1_sent' => (bool) $s->reminder1_sent,
+                'reminder2_sent' => (bool) $s->reminder2_sent,
+                'reminder3_sent' => (bool) $s->reminder3_sent,
+            ];
+        });
+
+        $merged = $formattedBookings->concat($formattedServices);
+
+        return response()->json($merged);
+    }
+
+    public function markReminderSent(Request $request)
+    {
+        $validated = $request->validate([
+            'id' => 'required',
+            'type' => 'required|string|in:BKG,SRV',
+            'template_id' => 'required|integer|in:1,2,3',
+        ]);
+
+        $id = $validated['id'];
+        $type = $validated['type'];
+        $templateId = $validated['template_id'];
+
+        if ($type === 'BKG') {
+            $record = UcBooking::with('driver')->where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        } else {
+            $record = \App\Models\UmrahCab\UcService::where('id', $id)->orWhere('custom_id', $id)->firstOrFail();
+        }
+
+        $fieldName = 'reminder' . $templateId . '_sent';
+        $record->$fieldName = true;
+        $record->save();
+
+        // Create log record
+        $recipient = null;
+        if ($type === 'BKG') {
+            $recipient = $record->whatsapp ?: ($record->customer ? explode(' ', $record->customer->contact)[0] : null);
+        } else {
+            $recipient = $record->customer && $record->customer->contact ? explode(' ', $record->customer->contact)[0] : null;
+        }
+
+        \App\Models\UmrahCab\UcReminderLog::create([
+            'booking_id' => $type === 'BKG' ? $record->id : null,
+            'service_id' => $type === 'SRV' ? $record->id : null,
+            'type' => $type,
+            'reminder_type' => $templateId,
+            'recipient' => $recipient,
+            'driver_name' => $type === 'BKG' && $record->driver ? $record->driver->name : null,
+            'driver_trip_status' => $type === 'BKG' ? $record->driver_trip_status : null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reminder sent status marked and logged successfully.',
+            'data' => $record
+        ]);
+    }
+
+    public function reminderHistory($id, Request $request)
+    {
+        $type = $request->query('type', 'BKG');
+
+        $query = \App\Models\UmrahCab\UcReminderLog::orderBy('created_at', 'desc');
+
+        if ($type === 'BKG') {
+            $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+            $query->where('booking_id', $booking->id)->where('type', 'BKG');
+        } else {
+            $service = \App\Models\UmrahCab\UcService::where('id', $id)->orWhere('custom_id', $id)->firstOrFail();
+            $query->where('service_id', $service->id)->where('type', 'SRV');
+        }
+
+        $logs = $query->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs
+        ]);
     }
 }

@@ -22,12 +22,18 @@ class UcService extends Model
         'pickup',
         'driver_cash',
         'date',
-        'time'
+        'time',
+        'reminder1_sent',
+        'reminder2_sent',
+        'reminder3_sent'
     ];
 
     protected $casts = [
         'base_price' => 'float',
         'driver_cash' => 'float',
+        'reminder1_sent' => 'boolean',
+        'reminder2_sent' => 'boolean',
+        'reminder3_sent' => 'boolean',
     ];
 
     public function customer()

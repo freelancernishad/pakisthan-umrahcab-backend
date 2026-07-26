@@ -31,7 +31,10 @@ class UcBooking extends Model
         'payment_method',
         'received_amount',
         'pending_amount',
-        'driver_trip_status'
+        'driver_trip_status',
+        'reminder1_sent',
+        'reminder2_sent',
+        'reminder3_sent'
     ];
 
     protected $casts = [
@@ -39,10 +42,18 @@ class UcBooking extends Model
         'received_amount' => 'float',
         'pending_amount' => 'float',
         'driver_id' => 'integer',
+        'reminder1_sent' => 'boolean',
+        'reminder2_sent' => 'boolean',
+        'reminder3_sent' => 'boolean',
     ];
 
     public function driver()
     {
         return $this->belongsTo(UcDriver::class, 'driver_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(UcCustomer::class, 'customer_id');
     }
 }

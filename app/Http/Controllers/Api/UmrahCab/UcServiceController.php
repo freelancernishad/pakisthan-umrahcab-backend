@@ -89,6 +89,7 @@ class UcServiceController extends Controller
     public function update(Request $request, $id)
     {
         $service = UcService::where('id', $id)->orWhere('custom_id', $id)->firstOrFail();
+        $oldStatus = $service->status;
 
         $validated = $request->validate([
             'customer_id' => 'nullable|integer|exists:uc_customers,id',
@@ -104,6 +105,22 @@ class UcServiceController extends Controller
         ]);
 
         $service->update($validated);
+
+        if (array_key_exists('status', $validated) && $validated['status'] !== $oldStatus) {
+            $service->reminder1_sent = false;
+            $service->reminder2_sent = false;
+            $service->reminder3_sent = false;
+            $service->save();
+
+            \App\Models\UmrahCab\UcReminderLog::create([
+                'service_id' => $service->id,
+                'type' => 'SRV',
+                'reminder_type' => 5, // Service Status Change System Log
+                'recipient' => 'System Update',
+                'driver_name' => null,
+                'driver_trip_status' => $service->status ?: 'N/A',
+            ]);
+        }
 
         return response()->json([
             'success' => true,

@@ -197,4 +197,37 @@ class UcPaymentController extends Controller
             'data' => $payment
         ]);
     }
+
+    public function destroy($id)
+    {
+        $payment = UcPayment::findOrFail($id);
+        
+        // If the payment was approved and credited the ledger, revoke the credited amount
+        $isCleared = in_array(strtolower($payment->status), ['approved', 'success', 'verified']);
+        $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+                         (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
+
+        if ($isCleared && !$isDuePayment) {
+            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+            $newBalance = $lastBalance - $payment->amount;
+
+            \App\Models\UmrahCab\UcLedger::create([
+                'company' => $payment->company,
+                'custom_id' => 'LED-' . rand(1000, 9999),
+                'date' => date('Y-m-d'),
+                'description' => 'Payment Deleted/Revoked: ' . ($payment->custom_id ?? 'PAY-'.$payment->id),
+                'debit' => $payment->amount,
+                'credit' => 0,
+                'balance' => $newBalance
+            ]);
+        }
+
+        $payment->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Payment record deleted successfully!'
+        ]);
+    }
 }

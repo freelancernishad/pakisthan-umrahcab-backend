@@ -229,6 +229,96 @@ class CompanyPanelController extends Controller
         return response()->json($query->get());
     }
 
+    public function clientLedger(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $companyName = trim($company->name);
+
+        $customerIds = UcCustomer::where('company', 'LIKE', "%{$companyName}%")
+            ->orWhereRaw('LOWER(company) = ?', [strtolower($companyName)])
+            ->pluck('id');
+
+        $query = UcBooking::where(function ($q) use ($customerIds, $companyName) {
+            $q->whereIn('customer_id', $customerIds)
+              ->orWhereHas('customer', function ($cq) use ($companyName) {
+                  $cq->where('company', 'LIKE', "%{$companyName}%");
+              });
+        })->with('customer');
+
+
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                  ->orWhere('full_name', 'like', "%{$search}%")
+                  ->orWhere('whatsapp', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('start_date') && !empty($request->start_date)) {
+            $query->where('date', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date') && !empty($request->end_date)) {
+            $query->where('date', '<=', $request->end_date);
+        }
+
+        $bookings = $query->orderBy('id', 'desc')->get();
+
+        $totalBilled = $bookings->sum(function ($b) { return (float) ($b->car_price ?? 0); });
+        $totalReceived = $bookings->sum(function ($b) { return (float) ($b->received_amount ?? 0); });
+        $totalPending = $bookings->sum(function ($b) { return (float) ($b->pending_amount ?? 0); });
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'total_bookings' => $bookings->count(),
+                'total_billed' => $totalBilled,
+                'total_received' => $totalReceived,
+                'total_pending' => $totalPending,
+            ],
+            'data' => $bookings
+        ]);
+    }
+
+    public function updateBookingPayment(Request $request, $id)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $booking = UcBooking::find($id);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'received_amount' => 'required|numeric|min:0',
+        ]);
+
+        $received = (float) $validated['received_amount'];
+        $carPrice = (float) $booking->car_price;
+        $pending = max(0, $carPrice - $received);
+
+        $booking->received_amount = $received;
+        $booking->pending_amount = $pending;
+        $booking->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client payment updated successfully!',
+            'data' => $booking
+        ]);
+    }
+
+
+
+
     public function payments(Request $request)
     {
         $company = $this->getCompany();

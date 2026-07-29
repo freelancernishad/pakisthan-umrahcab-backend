@@ -15,6 +15,10 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
         Route::get('customers/{id}', [CompanyPanelController::class, 'customerDetails']);
         Route::get('invoices', [CompanyPanelController::class, 'invoices']);
         Route::get('ledgers', [CompanyPanelController::class, 'ledgers']);
+        Route::get('client-ledger', [CompanyPanelController::class, 'clientLedger']);
+        Route::put('bookings/{id}/payment', [CompanyPanelController::class, 'updateBookingPayment']);
+
+
         Route::get('payments', [CompanyPanelController::class, 'payments']);
         Route::post('payments', [CompanyPanelController::class, 'createPayment']);
         

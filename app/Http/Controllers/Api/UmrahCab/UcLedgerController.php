@@ -42,4 +42,55 @@ class UcLedgerController extends Controller
             'data' => $ledger
         ], 201);
     }
+
+    public function directClientsLedger(Request $request)
+    {
+        $query = \App\Models\UmrahCab\UcBooking::with('customer')
+            ->where(function ($q) {
+                $q->whereNull('customer_id')
+                  ->orWhereHas('customer', function ($cq) {
+                      $cq->whereNull('company')
+                        ->orWhere('company', '')
+                        ->orWhere('company', 'Direct')
+                        ->orWhere('company', 'None');
+                  });
+            });
+
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('booking_code', 'like', "%{$search}%")
+                  ->orWhere('full_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('whatsapp', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->has('start_date') && !empty($request->start_date)) {
+            $query->where('date', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date') && !empty($request->end_date)) {
+            $query->where('date', '<=', $request->end_date);
+        }
+
+        $bookings = $query->orderBy('id', 'desc')->get();
+
+        $totalBilled = $bookings->sum(function ($b) { return (float) ($b->car_price ?? 0); });
+        $totalReceived = $bookings->sum(function ($b) { return (float) ($b->received_amount ?? 0); });
+        $totalPending = $bookings->sum(function ($b) { return (float) ($b->pending_amount ?? 0); });
+
+        return response()->json([
+            'success' => true,
+            'summary' => [
+                'total_bookings' => $bookings->count(),
+                'total_billed' => $totalBilled,
+                'total_received' => $totalReceived,
+                'total_pending' => $totalPending,
+            ],
+            'data' => $bookings
+        ]);
+    }
 }
+
+

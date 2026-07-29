@@ -68,7 +68,7 @@ class UcCompanyController extends Controller
     {
         $company = UcCompany::findOrFail($id);
         $validated = $request->validate([
-            'name' => 'required|string',
+            'name' => 'sometimes|required|string',
             'agent_username' => 'nullable|string|unique:uc_companies,agent_username,' . $id,
             'agent_password' => 'nullable|string',
             'phone' => 'nullable|string',
@@ -76,7 +76,7 @@ class UcCompanyController extends Controller
             'website' => 'nullable|string',
             'logo_path' => 'nullable|string',
             'address' => 'nullable|string',
-            'invoice' => 'required|boolean',
+            'invoice' => 'sometimes|boolean',
             'vouchers' => 'nullable|boolean',
             'reminders' => 'nullable|boolean',
             'statement_status' => 'nullable|string',

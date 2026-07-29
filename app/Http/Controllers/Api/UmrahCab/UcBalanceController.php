@@ -116,12 +116,13 @@ class UcBalanceController extends Controller
             $nextPickups, $lastServices, $nextServices
         ) {
             $name    = $comp->name;
-            $inv     = $invoiceStats[$name]   ?? null;
-            $lastInv = $lastInvoices[$name]   ?? null;
-            $lastPay = $lastPayments[$name]   ?? null;
-            $lastFlp = $lastFollowups[$name]  ?? null;
+            $trimmed = trim($name);
+            $inv     = $invoiceStats[$name]   ?? $invoiceStats[$trimmed]   ?? null;
+            $lastInv = $lastInvoices[$name]   ?? $lastInvoices[$trimmed]   ?? null;
+            $lastPay = $lastPayments[$name]   ?? $lastPayments[$trimmed]   ?? null;
+            $lastFlp = $lastFollowups[$name]  ?? $lastFollowups[$trimmed]  ?? null;
 
-            $ledgerBal  = (float) ($ledgerBalances[$name] ?? 0);
+            $ledgerBal  = (float) ($ledgerBalances[$name] ?? $ledgerBalances[$trimmed] ?? 0);
             $totalBiz   = (float) ($inv->total_business        ?? 0);
             $recVW      = (float) ($inv->total_receivable_vw   ?? 0);
             $recPW      = (float) ($inv->total_receivable_pw   ?? 0);
@@ -134,8 +135,8 @@ class UcBalanceController extends Controller
                 $remarks = is_array($decoded) ? ($decoded['remarks'] ?? 'No remarks') : $lastFlp->followup_remarks;
             }
 
-            // Company status: CLEARED = no unpaid invoices / no receivable
-            $status = ($recVW == 0 && $unpaid == 0) ? 'CLEARED' : 'UNPAID';
+            // Company status: CLEARED = no unpaid invoices / no receivable AND ledger balance <= 0
+            $status = ($recVW == 0 && $unpaid == 0 && $ledgerBal <= 0) ? 'CLEARED' : 'UNPAID';
 
             return [
                 'id'               => $comp->id,
@@ -169,7 +170,7 @@ class UcBalanceController extends Controller
         if ($filterTab === 'due_today') {
             $rows = $rows->filter(fn($r) => $r['last_inv_amt'] > 0 && $r['status'] === 'UNPAID');
         } elseif ($filterTab === 'overdue') {
-            $rows = $rows->filter(fn($r) => $r['total_rec_vw'] > 0);
+            $rows = $rows->filter(fn($r) => $r['total_rec_vw'] > 0 || $r['ledger_balance'] > 0 || $r['status'] === 'UNPAID');
         } elseif ($filterTab === 'cleared') {
             $rows = $rows->filter(fn($r) => $r['status'] === 'CLEARED');
         } elseif ($filterTab === 'upcoming') {

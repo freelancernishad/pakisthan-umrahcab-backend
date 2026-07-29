@@ -110,28 +110,35 @@ class UcPaymentController extends Controller
             $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approval Note: " . $request->notes . "]");
         }
 
-        // If status is approved and approved_amount is less than original amount, we record a due amount
+        $methodLower = strtolower($payment->method ?? '');
+        $isLoanMethod = (strpos($methodLower, 'loan') !== false || strpos($methodLower, 'credit') !== false);
+
+        // If status is approved and approved_amount is less than original amount
         if (in_array(strtolower($newStatus), ['approved', 'success', 'verified']) && $approvedAmount < $payment->amount && $approvedAmount > 0) {
             $dueAmount = $payment->amount - $approvedAmount;
-            
-            // Note: Since agent gets the full requested balance (e.g. 150), we DO NOT change the current payment's amount.
-            // We keep $payment->amount as requested so it credits the full amount to the ledger.
-            $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Payment: Received " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $dueAmount . "]");
 
-            // Create a new pending payment for the remaining due.
-            // Since they already got the full credit, this due payment when approved should NOT credit the ledger again.
-            UcPayment::create([
-                'custom_id' => 'PAY-' . rand(9000, 9999),
-                'company' => $payment->company,
-                'date' => date('Y-m-d'),
-                'method' => $payment->method,
-                'amount' => $dueAmount,
-                'currency' => $payment->currency,
-                'status' => 'Pending',
-                'transaction_ref' => $payment->custom_id . ' (Due Payment)',
-                'proof_details' => 'Auto-generated outstanding due payment for ' . $payment->custom_id . '. (No additional ledger credit on approval)',
-                'proof_file' => $payment->proof_file
-            ]);
+            if ($isLoanMethod) {
+                // For Loan/Credit methods: keep original amount requested for full credit & create pending due payment for remainder
+                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Loan Approval: Approved " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $dueAmount . "]");
+
+                // Create a new pending payment for the remaining due loan balance
+                UcPayment::create([
+                    'custom_id' => 'PAY-' . rand(9000, 9999),
+                    'company' => $payment->company,
+                    'date' => date('Y-m-d'),
+                    'method' => $payment->method,
+                    'amount' => $dueAmount,
+                    'currency' => $payment->currency,
+                    'status' => 'Pending',
+                    'transaction_ref' => $payment->custom_id . ' (Due Payment)',
+                    'proof_details' => 'Auto-generated outstanding due payment for ' . $payment->custom_id . '. (No additional ledger credit on approval)',
+                    'proof_file' => $payment->proof_file
+                ]);
+            } else {
+                // For Bank Transfer, Cash Deposit, Credit Card etc.: client paid cash/bank transfer. Update payment amount to received amount.
+                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approved Received Amount: " . $approvedAmount . " of requested " . $payment->amount . "]");
+                $payment->amount = $approvedAmount;
+            }
         }
 
         $payment->status = $newStatus;

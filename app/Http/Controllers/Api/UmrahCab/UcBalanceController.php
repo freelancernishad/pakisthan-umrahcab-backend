@@ -13,8 +13,8 @@ class UcBalanceController extends Controller
 {
     public function summary(Request $request)
     {
-        $filterCompany    = $request->get('company', '');
-        $filterTab        = $request->get('tab', 'all'); // all|due_today|overdue|cleared|paid_advance|upcoming
+        $filterCompany = $request->get('company', '');
+        $filterTab     = $request->get('tab', 'all'); // all|due_today|overdue|cleared|upcoming
 
         // ── 1. Latest ledger balance per company ─────────────────────────────
         $latestLedgers = UcLedger::select('company', DB::raw('MAX(id) as max_id'))
@@ -25,33 +25,22 @@ class UcBalanceController extends Controller
             ->select('uc_ledgers.company', 'uc_ledgers.balance')
             ->pluck('balance', 'company');
 
-        // ── 2. Unpaid invoice totals + last invoice info per company (via customer join) ─
-        $invoiceStats = DB::table('uc_invoices')
-            ->join('uc_customers', 'uc_invoices.customer_id', '=', 'uc_customers.id')
+        // ── 2. All Invoices (leftJoin uc_customers so company-level invoices are included) ──
+        $allInvoices = DB::table('uc_invoices')
+            ->leftJoin('uc_customers', 'uc_invoices.customer_id', '=', 'uc_customers.id')
             ->select(
-                'uc_customers.company',
-                DB::raw('SUM(uc_invoices.amount) as total_business'),
-                DB::raw('SUM(CASE WHEN uc_invoices.status NOT IN ("Paid","paid","completed") THEN uc_invoices.amount ELSE 0 END) as total_receivable_vw'),
-                DB::raw('SUM(CASE WHEN uc_invoices.status NOT IN ("Paid","paid","completed") THEN uc_invoices.balance ELSE 0 END) as total_receivable_pw'),
-                DB::raw('COUNT(CASE WHEN uc_invoices.status NOT IN ("Paid","paid","completed") THEN 1 END) as unpaid_count')
+                'uc_invoices.id',
+                'uc_invoices.customer as inv_customer',
+                'uc_customers.company as cust_company',
+                'uc_invoices.amount',
+                'uc_invoices.balance',
+                'uc_invoices.status',
+                'uc_invoices.date',
+                'uc_invoices.invoice_code'
             )
-            ->groupBy('uc_customers.company')
-            ->get()
-            ->keyBy('company');
+            ->get();
 
-        // ── 3. Last invoice details per company ───────────────────────────────
-        $lastInvoiceIds = DB::table('uc_invoices')
-            ->join('uc_customers', 'uc_invoices.customer_id', '=', 'uc_customers.id')
-            ->select('uc_customers.company', DB::raw('MAX(uc_invoices.id) as max_id'))
-            ->groupBy('uc_customers.company');
-
-        $lastInvoices = DB::table('uc_invoices')
-            ->joinSub($lastInvoiceIds, 'li', fn($j) => $j->on('uc_invoices.id', '=', 'li.max_id'))
-            ->select('li.company', 'uc_invoices.amount as last_inv_amt', 'uc_invoices.date as last_inv_date', 'uc_invoices.invoice_code as inv_period')
-            ->get()
-            ->keyBy('company');
-
-        // ── 4. Last payment info per company ─────────────────────────────────
+        // ── 3. Last payment info per company ─────────────────────────────────
         $lastPaymentIds = UcPayment::select('company', DB::raw('MAX(id) as max_id'))
             ->groupBy('company');
 
@@ -61,7 +50,7 @@ class UcBalanceController extends Controller
             ->get()
             ->keyBy('company');
 
-        // ── 5. Last followup info per company (agent = company name in followups) ─
+        // ── 4. Last followup info per company ─────────────────────────────────
         $lastFollowupIds = DB::table('uc_followups')
             ->select('agent', DB::raw('MAX(id) as max_id'))
             ->groupBy('agent');
@@ -72,36 +61,48 @@ class UcBalanceController extends Controller
             ->get()
             ->keyBy('company');
 
-        // ── 5a. Last/Next Pickup and Service info per company ────────────────
+        // ── 5. Last/Next Pickup and Service info per company ────────────────
         $today = now()->toDateString();
 
         $lastPickups = DB::table('uc_bookings')
-            ->join('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
+            ->leftJoin('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
             ->where('uc_bookings.date', '<=', $today)
-            ->select('uc_customers.company', DB::raw('MAX(uc_bookings.date) as date'))
-            ->groupBy('uc_customers.company')
-            ->pluck('date', 'company');
+            ->select(
+                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name)) as comp_name"),
+                DB::raw('MAX(uc_bookings.date) as date')
+            )
+            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name))"))
+            ->pluck('date', 'comp_name');
 
         $nextPickups = DB::table('uc_bookings')
-            ->join('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
+            ->leftJoin('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
             ->where('uc_bookings.date', '>=', $today)
-            ->select('uc_customers.company', DB::raw('MIN(uc_bookings.date) as date'))
-            ->groupBy('uc_customers.company')
-            ->pluck('date', 'company');
+            ->select(
+                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name)) as comp_name"),
+                DB::raw('MIN(uc_bookings.date) as date')
+            )
+            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name))"))
+            ->pluck('date', 'comp_name');
 
         $lastServices = DB::table('uc_services')
-            ->join('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
+            ->leftJoin('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
             ->where('uc_services.date', '<=', $today)
-            ->select('uc_customers.company', DB::raw('MAX(uc_services.date) as date'))
-            ->groupBy('uc_customers.company')
-            ->pluck('date', 'company');
+            ->select(
+                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name)) as comp_name"),
+                DB::raw('MAX(uc_services.date) as date')
+            )
+            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name))"))
+            ->pluck('date', 'comp_name');
 
         $nextServices = DB::table('uc_services')
-            ->join('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
+            ->leftJoin('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
             ->where('uc_services.date', '>=', $today)
-            ->select('uc_customers.company', DB::raw('MIN(uc_services.date) as date'))
-            ->groupBy('uc_customers.company')
-            ->pluck('date', 'company');
+            ->select(
+                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name)) as comp_name"),
+                DB::raw('MIN(uc_services.date) as date')
+            )
+            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name))"))
+            ->pluck('date', 'comp_name');
 
         // ── 6. Build per-company rows ─────────────────────────────────────────
         $companiesQuery = UcCompany::orderBy('name');
@@ -111,22 +112,63 @@ class UcBalanceController extends Controller
         $companies = $companiesQuery->get();
 
         $rows = $companies->map(function ($comp) use (
-            $ledgerBalances, $invoiceStats, $lastInvoices,
-            $lastPayments, $lastFollowups, $lastPickups,
-            $nextPickups, $lastServices, $nextServices
+            $allInvoices, $ledgerBalances, $lastPayments,
+            $lastFollowups, $lastPickups, $nextPickups,
+            $lastServices, $nextServices
         ) {
             $name    = $comp->name;
             $trimmed = trim($name);
-            $inv     = $invoiceStats[$name]   ?? $invoiceStats[$trimmed]   ?? null;
-            $lastInv = $lastInvoices[$name]   ?? $lastInvoices[$trimmed]   ?? null;
-            $lastPay = $lastPayments[$name]   ?? $lastPayments[$trimmed]   ?? null;
-            $lastFlp = $lastFollowups[$name]  ?? $lastFollowups[$trimmed]  ?? null;
 
-            $ledgerBal  = (float) ($ledgerBalances[$name] ?? $ledgerBalances[$trimmed] ?? 0);
-            $totalBiz   = (float) ($inv->total_business        ?? 0);
-            $recVW      = (float) ($inv->total_receivable_vw   ?? 0);
-            $recPW      = (float) ($inv->total_receivable_pw   ?? 0);
-            $unpaid     = (int)   ($inv->unpaid_count          ?? 0);
+            // Filter invoices matching this company
+            $compInvoices = $allInvoices->filter(function($inv) use ($trimmed) {
+                $c1 = trim($inv->cust_company ?? '');
+                $c2 = trim($inv->inv_customer ?? '');
+                return ($c1 !== '' && strcasecmp($c1, $trimmed) === 0) || ($c2 !== '' && strcasecmp($c2, $trimmed) === 0);
+            });
+
+            $totalBiz = (float) $compInvoices->sum('amount');
+
+            $unpaidInvoices = $compInvoices->filter(function($inv) {
+                $st = strtolower(trim($inv->status ?? ''));
+                return !in_array($st, ['paid', 'completed', 'cleared']);
+            });
+
+            $recVW       = (float) $unpaidInvoices->sum('amount');
+            $recPW       = (float) $unpaidInvoices->sum('balance');
+            $unpaidCount = $unpaidInvoices->count();
+
+            // Match ledger balance
+            $ledgerBal = 0;
+            foreach ($ledgerBalances as $cName => $bal) {
+                if (strcasecmp(trim($cName), $trimmed) === 0) {
+                    $ledgerBal = (float) $bal;
+                    break;
+                }
+            }
+
+            // Fallback: If no unpaid invoices exist, but ledger_balance > 0 (outstanding credit/udhar)
+            if ($recVW == 0 && $ledgerBal > 0) {
+                $recVW = $ledgerBal;
+                $recPW = $ledgerBal;
+            }
+
+            // Match last payment
+            $lastPay = null;
+            foreach ($lastPayments as $cName => $lp) {
+                if (strcasecmp(trim($cName), $trimmed) === 0) {
+                    $lastPay = $lp;
+                    break;
+                }
+            }
+
+            // Match last followup
+            $lastFlp = null;
+            foreach ($lastFollowups as $cName => $lf) {
+                if (strcasecmp(trim($cName), $trimmed) === 0) {
+                    $lastFlp = $lf;
+                    break;
+                }
+            }
 
             // Parse followup remarks from JSON if applicable
             $remarks = 'No remarks';
@@ -135,28 +177,31 @@ class UcBalanceController extends Controller
                 $remarks = is_array($decoded) ? ($decoded['remarks'] ?? 'No remarks') : $lastFlp->followup_remarks;
             }
 
-            // Company status: CLEARED = no unpaid invoices / no receivable AND ledger balance <= 0
-            $status = ($recVW == 0 && $unpaid == 0 && $ledgerBal <= 0) ? 'CLEARED' : 'UNPAID';
+            // Latest invoice details
+            $lastInv = $compInvoices->sortByDesc('id')->first();
+
+            // Status: CLEARED only if no unpaid receivables and ledger balance <= 0
+            $status = ($recVW <= 0 && $recPW <= 0 && $unpaidCount == 0 && $ledgerBal <= 0) ? 'CLEARED' : 'UNPAID';
 
             return [
                 'id'               => $comp->id,
                 'vouchers_lock'    => (bool) $comp->vouchers,
                 'company'          => $name,
                 'status'           => $status,
-                'last_inv_amt'     => (float) ($lastInv->last_inv_amt  ?? 0),
-                'inv_period'       => $lastInv->inv_period             ?? 'N/A',
+                'last_inv_amt'     => (float) ($lastInv->amount        ?? 0),
+                'inv_period'       => $lastInv->invoice_code           ?? 'N/A',
                 'last_followup'    => $lastFlp->last_followup          ?? null,
                 'followup_remarks' => $remarks,
                 'total_business'   => $totalBiz,
                 'last_pay_date'    => $lastPay->last_pay_date          ?? null,
                 'last_pay_amt'     => (float) ($lastPay->last_pay_amt  ?? 0),
-                'last_pickup'      => $lastPickups[$name]              ?? null,
-                'next_pickup'      => $nextPickups[$name]              ?? null,
-                'last_service'     => $lastServices[$name]             ?? null,
-                'next_service'     => $nextServices[$name]             ?? null,
+                'last_pickup'      => $lastPickups[$trimmed]           ?? $lastPickups[$name]  ?? null,
+                'next_pickup'      => $nextPickups[$trimmed]           ?? $nextPickups[$name]  ?? null,
+                'last_service'     => $lastServices[$trimmed]          ?? $lastServices[$name] ?? null,
+                'next_service'     => $nextServices[$trimmed]          ?? $nextServices[$name] ?? null,
                 'total_rec_vw'     => $recVW,
                 'total_rec_pw'     => $recPW,
-                'unpaid_count'     => $unpaid,
+                'unpaid_count'     => $unpaidCount,
                 'ledger_balance'   => $ledgerBal,
                 'statement_status' => $comp->statement_status          ?? 'Pending',
                 'company_remarks'  => $comp->remarks                   ?? '',
@@ -190,3 +235,4 @@ class UcBalanceController extends Controller
         ]);
     }
 }
+

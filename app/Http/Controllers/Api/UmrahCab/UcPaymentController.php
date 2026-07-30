@@ -112,49 +112,71 @@ class UcPaymentController extends Controller
 
         $methodLower = strtolower($payment->method ?? '');
         $isLoanMethod = (strpos($methodLower, 'loan') !== false || strpos($methodLower, 'credit') !== false);
+        $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+                         (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
 
-        // If status is approved and approved_amount is less than original amount
-        if (in_array(strtolower($newStatus), ['approved', 'success', 'verified']) && $approvedAmount < $payment->amount && $approvedAmount > 0) {
-            $dueAmount = $payment->amount - $approvedAmount;
+        $isNewCleared = in_array(strtolower($newStatus), ['approved', 'success', 'verified']);
+        $isOldCleared = in_array(strtolower($oldStatus), ['approved', 'success', 'verified']);
 
-            if ($isLoanMethod) {
-                // For Loan/Credit methods: keep original amount requested for full credit & create pending due payment for remainder
-                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Loan Approval: Approved " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $dueAmount . "]");
+        // Handle Loan approval & Due Payment adjustments
+        if ($isNewCleared && !$isOldCleared) {
+            if ($isLoanMethod && !$isDuePayment) {
+                // Admin is approving a LOAN / CREDIT request:
+                // Update payment amount to approved loan amount
+                $payment->amount = $approvedAmount;
+                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Loan Approved: " . $approvedAmount . " SAR]");
 
-                // Create a new pending payment for the remaining due loan balance
+                // Create auto-generated Due Payment record so it displays under Payable Amount (Admin)
                 UcPayment::create([
                     'custom_id' => 'PAY-' . rand(9000, 9999),
                     'company' => $payment->company,
                     'date' => date('Y-m-d'),
-                    'method' => $payment->method,
-                    'amount' => $dueAmount,
+                    'method' => 'Loan Due',
+                    'amount' => $approvedAmount,
                     'currency' => $payment->currency,
                     'status' => 'Pending',
-                    'transaction_ref' => $payment->custom_id . ' (Due Payment)',
-                    'proof_details' => 'Auto-generated outstanding due payment for ' . $payment->custom_id . '. (No additional ledger credit on approval)',
+                    'transaction_ref' => ($payment->custom_id ?? ('PAY-'.$payment->id)) . ' (Loan Due)',
+                    'proof_details' => 'Auto-generated loan due payable to Admin. (No additional ledger credit on approval)',
                     'proof_file' => $payment->proof_file
                 ]);
+            } elseif ($isDuePayment) {
+                // Admin is approving/adjusting a DUE PAYMENT repayment (e.g. Agent paying off part/all of loan):
+                if ($approvedAmount < $payment->amount && $approvedAmount > 0) {
+                    $remainingDue = $payment->amount - $approvedAmount;
+                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Repayment Approved: " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $remainingDue . "]");
+                    $payment->amount = $approvedAmount;
+
+                    // Create pending record for remaining due amount
+                    UcPayment::create([
+                        'custom_id' => 'PAY-' . rand(9000, 9999),
+                        'company' => $payment->company,
+                        'date' => date('Y-m-d'),
+                        'method' => $payment->method,
+                        'amount' => $remainingDue,
+                        'currency' => $payment->currency,
+                        'status' => 'Pending',
+                        'transaction_ref' => ($payment->transaction_ref ?? 'Due Payment'),
+                        'proof_details' => 'Auto-generated remaining due payable to Admin. (No additional ledger credit on approval)',
+                        'proof_file' => $payment->proof_file
+                    ]);
+                }
             } else {
-                // For Bank Transfer, Cash Deposit, Credit Card etc.: client paid cash/bank transfer. Update payment amount to received amount.
-                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approved Received Amount: " . $approvedAmount . " of requested " . $payment->amount . "]");
-                $payment->amount = $approvedAmount;
+                // Normal Cash / Bank Transfer / Credit Card deposit approval:
+                // Simply set payment amount to approved received amount (no due payment created)
+                if ($approvedAmount > 0 && $approvedAmount != $payment->amount) {
+                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approved Received Amount: " . $approvedAmount . " of requested " . $payment->amount . "]");
+                    $payment->amount = $approvedAmount;
+                }
             }
         }
 
         $payment->status = $newStatus;
         $payment->save();
 
-        // If transitioning from non-approved/non-verified to approved/verified/success
-        $isNewCleared = in_array(strtolower($newStatus), ['approved', 'success', 'verified']);
-        $isOldCleared = in_array(strtolower($oldStatus), ['approved', 'success', 'verified']);
-
+        // Handle Ledger Credit / Revocation
         if ($isNewCleared && !$isOldCleared) {
-            // Check if this is an auto-generated due payment (so it doesn't double-credit the ledger)
-            $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
-                             (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
-            
+            // Ledger credit is added ONLY for actual deposit requests (NOT for due payment repayments)
             if (!$isDuePayment) {
-                // Fetch last balance to calculate next balance
                 $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
                 $lastBalance = $lastLedger ? $lastLedger->balance : 0;
                 $newBalance = $lastBalance + $payment->amount;
@@ -163,7 +185,7 @@ class UcPaymentController extends Controller
                     'company' => $payment->company,
                     'custom_id' => 'LED-' . rand(1000, 9999),
                     'date' => date('Y-m-d'),
-                    'description' => 'Payment Cleared: ' . ($payment->custom_id ?? 'PAY-'.$payment->id),
+                    'description' => ($isLoanMethod ? 'Loan Balance Approved: ' : 'Payment Cleared: ') . ($payment->custom_id ?? 'PAY-'.$payment->id),
                     'debit' => 0,
                     'credit' => $payment->amount,
                     'balance' => $newBalance
@@ -171,9 +193,6 @@ class UcPaymentController extends Controller
             }
         } elseif (!$isNewCleared && $isOldCleared) {
             // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
-            $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
-                             (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
-
             if (!$isDuePayment) {
                 $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
                 $lastBalance = $lastLedger ? $lastLedger->balance : 0;

@@ -196,10 +196,24 @@ class UcBalanceController extends Controller
                 }
             }
 
-            // Fallback: If no unpaid invoices exist, but ledger_balance > 0 (outstanding credit/udhar)
-            if ($recVW == 0 && $ledgerBal > 0) {
-                $recVW = $ledgerBal;
-                $recPW = $ledgerBal;
+            // Calculate outstanding loan due for this company
+            $outstandingLoan = (float) \App\Models\UmrahCab\UcPayment::where(function($q) use ($trimmed) {
+                $q->where('company', $trimmed)
+                  ->orWhere('company', 'like', "%{$trimmed}%");
+            })
+            ->where('method', 'Loan Due')
+            ->whereIn('status', ['Pending', 'pending'])
+            ->sum('amount');
+
+            // Fallback: If no unpaid invoices exist, calculate booking debt (negative ledger) and add outstanding loan
+            if ($recVW == 0) {
+                $bookingDebt = $ledgerBal < 0 ? abs($ledgerBal) : 0;
+                $recVW = $bookingDebt + $outstandingLoan;
+                $recPW = $bookingDebt + $outstandingLoan;
+            } else {
+                // If unpaid invoices exist, also append the outstanding loan to the total receivable
+                $recVW += $outstandingLoan;
+                $recPW += $outstandingLoan;
             }
 
             // Match last payment

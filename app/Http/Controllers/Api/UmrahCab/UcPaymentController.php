@@ -30,7 +30,11 @@ class UcPaymentController extends Controller
         }
 
         if ($company) {
-            $query->where('company', $company);
+            $trimmedComp = trim($company);
+            $query->where(function($q) use ($company, $trimmedComp) {
+                $q->where('company', $company)
+                  ->orWhere('company', 'like', "%{$trimmedComp}%");
+            });
         }
 
         if ($method && $method !== 'all') {

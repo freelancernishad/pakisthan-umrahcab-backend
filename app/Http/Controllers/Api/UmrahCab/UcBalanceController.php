@@ -67,55 +67,105 @@ class UcBalanceController extends Controller
         $lastPickups = DB::table('uc_bookings')
             ->leftJoin('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
             ->where('uc_bookings.date', '<=', $today)
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name)) as comp_name"),
-                DB::raw('MAX(uc_bookings.date) as date')
-            )
-            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name))"))
-            ->pluck('date', 'comp_name');
+            ->select('uc_customers.company', 'uc_bookings.full_name', 'uc_bookings.date')
+            ->get()
+            ->groupBy(function($item) {
+                $comp = trim($item->company ?? '');
+                return !empty($comp) ? $comp : trim($item->full_name ?? '');
+            })
+            ->map(fn($group) => $group->max('date'));
 
         $nextPickups = DB::table('uc_bookings')
             ->leftJoin('uc_customers', 'uc_bookings.customer_id', '=', 'uc_customers.id')
             ->where('uc_bookings.date', '>=', $today)
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name)) as comp_name"),
-                DB::raw('MIN(uc_bookings.date) as date')
-            )
-            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_bookings.full_name))"))
-            ->pluck('date', 'comp_name');
+            ->select('uc_customers.company', 'uc_bookings.full_name', 'uc_bookings.date')
+            ->get()
+            ->groupBy(function($item) {
+                $comp = trim($item->company ?? '');
+                return !empty($comp) ? $comp : trim($item->full_name ?? '');
+            })
+            ->map(fn($group) => $group->min('date'));
 
         $lastServices = DB::table('uc_services')
             ->leftJoin('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
             ->where('uc_services.date', '<=', $today)
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name)) as comp_name"),
-                DB::raw('MAX(uc_services.date) as date')
-            )
-            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name))"))
-            ->pluck('date', 'comp_name');
+            ->select('uc_customers.company', 'uc_services.name', 'uc_services.date')
+            ->get()
+            ->groupBy(function($item) {
+                $comp = trim($item->company ?? '');
+                return !empty($comp) ? $comp : trim($item->name ?? '');
+            })
+            ->map(fn($group) => $group->max('date'));
 
         $nextServices = DB::table('uc_services')
             ->leftJoin('uc_customers', 'uc_services.customer_id', '=', 'uc_customers.id')
             ->where('uc_services.date', '>=', $today)
-            ->select(
-                DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name)) as comp_name"),
-                DB::raw('MIN(uc_services.date) as date')
-            )
-            ->groupBy(DB::raw("COALESCE(NULLIF(TRIM(uc_customers.company), ''), TRIM(uc_services.name))"))
-            ->pluck('date', 'comp_name');
+            ->select('uc_customers.company', 'uc_services.name', 'uc_services.date')
+            ->get()
+            ->groupBy(function($item) {
+                $comp = trim($item->company ?? '');
+                return !empty($comp) ? $comp : trim($item->name ?? '');
+            })
+            ->map(fn($group) => $group->min('date'));
 
         // ── 6. Build per-company rows ─────────────────────────────────────────
-        $companiesQuery = UcCompany::orderBy('name');
-        if ($filterCompany) {
-            $companiesQuery->where('name', $filterCompany);
-        }
-        $companies = $companiesQuery->get();
+        $dbCompanies = UcCompany::orderBy('name')->get();
+        $registeredNames = $dbCompanies->pluck('name')->map(fn($n) => trim($n))->toArray();
 
-        $rows = $companies->map(function ($comp) use (
+        // Also gather dynamic company names from payments, ledgers, and customers
+        $extraCompanyNames = collect([])
+            ->concat(UcPayment::pluck('company'))
+            ->concat(UcLedger::pluck('company'))
+            ->concat(DB::table('uc_customers')->pluck('company'))
+            ->filter()
+            ->map(fn($n) => trim($n))
+            ->reject(fn($n) => empty($n))
+            ->unique(fn($n) => strtolower($n));
+
+        $allCompaniesList = collect($dbCompanies->map(function($c) {
+            return [
+                'id' => $c->id,
+                'name' => $c->name,
+                'vouchers' => $c->vouchers,
+                'statement_status' => $c->statement_status,
+                'remarks' => $c->remarks,
+            ];
+        })->toArray());
+
+        $syntheticId = 900000;
+        foreach ($extraCompanyNames as $extName) {
+            $alreadyPresent = false;
+            foreach ($registeredNames as $reg) {
+                if (strcasecmp($reg, $extName) === 0) {
+                    $alreadyPresent = true;
+                    break;
+                }
+            }
+            if (!$alreadyPresent) {
+                $syntheticId++;
+                $allCompaniesList->push([
+                    'id' => $syntheticId,
+                    'name' => $extName,
+                    'vouchers' => 0,
+                    'statement_status' => 'Pending',
+                    'remarks' => '',
+                ]);
+            }
+        }
+
+        if ($filterCompany) {
+            $trimmedFilter = strtolower(trim($filterCompany));
+            $allCompaniesList = $allCompaniesList->filter(function($c) use ($trimmedFilter) {
+                return strcasecmp(trim($c['name'] ?? ''), $trimmedFilter) === 0;
+            });
+        }
+
+        $rows = $allCompaniesList->map(function ($compArr) use (
             $allInvoices, $ledgerBalances, $lastPayments,
             $lastFollowups, $lastPickups, $nextPickups,
             $lastServices, $nextServices
         ) {
+            $comp = (object) $compArr;
             $name    = $comp->name;
             $trimmed = trim($name);
 

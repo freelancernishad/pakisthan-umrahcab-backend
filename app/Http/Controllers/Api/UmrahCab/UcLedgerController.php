@@ -45,14 +45,20 @@ class UcLedgerController extends Controller
 
     public function directClientsLedger(Request $request)
     {
+        $registeredCompanies = \App\Models\UmrahCab\UcCompany::pluck('company_name')->filter()->toArray();
+
         $query = \App\Models\UmrahCab\UcBooking::with('customer')
-            ->where(function ($q) {
+            ->where(function ($q) use ($registeredCompanies) {
                 $q->whereNull('customer_id')
-                  ->orWhereHas('customer', function ($cq) {
+                  ->orWhereDoesntHave('customer')
+                  ->orWhereHas('customer', function ($cq) use ($registeredCompanies) {
                       $cq->whereNull('company')
                         ->orWhere('company', '')
                         ->orWhere('company', 'Direct')
                         ->orWhere('company', 'None');
+                      if (!empty($registeredCompanies)) {
+                          $cq->orWhereNotIn('company', $registeredCompanies);
+                      }
                   });
             });
 
@@ -76,9 +82,15 @@ class UcLedgerController extends Controller
 
         $bookings = $query->orderBy('id', 'desc')->get();
 
+        // Calculate dynamic values for each booking
+        $bookings->transform(function ($b) {
+            $b->calculated_pending = max(0, (float)($b->car_price ?? 0) - (float)($b->received_amount ?? 0));
+            return $b;
+        });
+
         $totalBilled = $bookings->sum(function ($b) { return (float) ($b->car_price ?? 0); });
         $totalReceived = $bookings->sum(function ($b) { return (float) ($b->received_amount ?? 0); });
-        $totalPending = $bookings->sum(function ($b) { return (float) ($b->pending_amount ?? 0); });
+        $totalPending = $bookings->sum('calculated_pending');
 
         return response()->json([
             'success' => true,

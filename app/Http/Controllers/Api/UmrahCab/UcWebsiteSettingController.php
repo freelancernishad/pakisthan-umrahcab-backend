@@ -9,26 +9,37 @@ use Illuminate\Http\Request;
 class UcWebsiteSettingController extends Controller
 {
     /**
-     * Get all website settings as key-value pairs.
+     * Helper to format setting values (especially image URLs).
      */
-    public function index()
+    private function formatSettings(Request $request)
     {
         $settings = UcWebsiteSetting::all()->pluck('value', 'key');
-        
-        $formattedSettings = [];
-        $appUrl = config('app.url') ?: 'http://localhost:8000';
-        
+        $formatted = [];
+        $appUrl = rtrim($request->schemeAndHttpHost() ?: (config('app.url') ?: 'http://localhost:8000'), '/');
+
         foreach ($settings as $key => $value) {
-            if (is_string($value) && str_starts_with($value, '/uploads/')) {
-                $formattedSettings[$key] = rtrim($appUrl, '/') . $value;
-                // Also save the relative path so the frontend can check or reuse it if needed
-                $formattedSettings[$key . '_relative'] = $value;
+            if (is_string($value)) {
+                if (preg_match('#(?:https?://[^/]+)?(/uploads/.*)$#i', $value, $matches)) {
+                    $relativePath = $matches[1];
+                    $formatted[$key] = $appUrl . $relativePath;
+                    $formatted[$key . '_relative'] = $relativePath;
+                } else {
+                    $formatted[$key] = $value;
+                }
             } else {
-                $formattedSettings[$key] = $value;
+                $formatted[$key] = $value;
             }
         }
-        
-        return response()->json($formattedSettings);
+
+        return $formatted;
+    }
+
+    /**
+     * Get all website settings as key-value pairs.
+     */
+    public function index(Request $request)
+    {
+        return response()->json($this->formatSettings($request));
     }
 
     /**
@@ -66,7 +77,7 @@ class UcWebsiteSettingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Website settings saved successfully!',
-            'data' => UcWebsiteSetting::all()->pluck('value', 'key')
+            'data' => $this->formatSettings($request)
         ], 200);
     }
 }

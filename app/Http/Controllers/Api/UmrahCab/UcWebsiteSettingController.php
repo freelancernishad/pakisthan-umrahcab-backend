@@ -16,11 +16,19 @@ class UcWebsiteSettingController extends Controller
         $settings = UcWebsiteSetting::all()->pluck('value', 'key');
         $formatted = [];
         $appUrl = rtrim($request->schemeAndHttpHost() ?: (config('app.url') ?: 'http://localhost:8000'), '/');
+        $host = strtolower($request->getHost());
+
+        // Check if current web environment serves uploads under /public/uploads/ or /uploads/
+        // If host is not localhost and SCRIPT_NAME or URI contains /public, or request is to live production server root
+        $isProjectRootWeb = !str_contains($host, 'localhost') && !str_contains($host, '127.0.0.1');
 
         foreach ($settings as $key => $value) {
             if (is_string($value)) {
-                if (preg_match('#(?:https?://[^/]+)?(/uploads/.*)$#i', $value, $matches)) {
-                    $relativePath = $matches[1];
+                if (preg_match('#(?:https?://[^/]+)?((?:/public)?/uploads/.*)$#i', $value, $matches)) {
+                    $uploadPath = $matches[1];
+                    $cleanUploadPath = preg_replace('#^/public/#i', '/', $uploadPath);
+
+                    $relativePath = ($isProjectRootWeb ? '/public' : '') . $cleanUploadPath;
                     $formatted[$key] = $appUrl . $relativePath;
                     $formatted[$key . '_relative'] = $relativePath;
                 } else {
@@ -61,7 +69,34 @@ class UcWebsiteSettingController extends Controller
                     $path = \Illuminate\Support\Facades\Storage::disk('s3')->putFileAs('settings', $file, $filename);
                     $url = \Illuminate\Support\Facades\Storage::disk('s3')->url($path);
                 } else {
-                    $file->move(public_path('uploads/settings'), $filename);
+                    $uploadDir = public_path('uploads/settings');
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $file->move($uploadDir, $filename);
+                    @chmod($uploadDir . '/' . $filename, 0644);
+
+                    // cPanel / Shared hosting sync: if DOCUMENT_ROOT or public_html is different from public_path
+                    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : null;
+                    if ($docRoot && realpath($docRoot) !== realpath(public_path())) {
+                        $docRootTarget = $docRoot . '/uploads/settings';
+                        if (!file_exists($docRootTarget)) {
+                            @mkdir($docRootTarget, 0755, true);
+                        }
+                        @copy($uploadDir . '/' . $filename, $docRootTarget . '/' . $filename);
+                        @chmod($docRootTarget . '/' . $filename, 0644);
+                    }
+
+                    $publicHtmlDir = base_path('public_html/uploads/settings');
+                    if (file_exists(base_path('public_html')) && realpath(base_path('public_html')) !== realpath(public_path())) {
+                        if (!file_exists($publicHtmlDir)) {
+                            @mkdir($publicHtmlDir, 0755, true);
+                        }
+                        @copy($uploadDir . '/' . $filename, $publicHtmlDir . '/' . $filename);
+                        @chmod($publicHtmlDir . '/' . $filename, 0644);
+                    }
+
                     $url = '/uploads/settings/' . $filename;
                 }
                 

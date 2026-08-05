@@ -75,7 +75,7 @@ class UcIndividualOrderController extends Controller
                 'individual_order_id' => $order->id,
                 'invoice_code' => $invoiceCode,
                 'customer' => $order->full_name,
-                'date' => $order->date->format('Y-m-d'),
+                'date' => $validated['date'],
                 'period' => 'One-time',
                 'amount' => $order->car_price,
                 'balance' => $order->car_price,

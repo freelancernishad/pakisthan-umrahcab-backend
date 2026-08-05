@@ -116,15 +116,20 @@ class UcIndividualOrderController extends Controller
 
             if (isset($validated['payment_status'])) {
                 $order->payment_status = $validated['payment_status'];
+            }
+
+            $isPaid = (isset($validated['payment_status']) && strtolower($validated['payment_status']) === 'paid') ||
+                     (isset($validated['status']) && strtolower($validated['status']) === 'paid');
+
+            if ($isPaid) {
+                $order->payment_status = 'Paid';
+                $order->status = 'Paid';
                 
-                // If payment status becomes Paid, mark invoice as Paid and balance as 0
-                if (strtolower($validated['payment_status']) === 'paid') {
-                    $invoice = $order->invoice;
-                    if ($invoice) {
-                        $invoice->status = 'Paid';
-                        $invoice->balance = 0.00;
-                        $invoice->save();
-                    }
+                $invoice = $order->invoice;
+                if ($invoice) {
+                    $invoice->status = 'Paid';
+                    $invoice->balance = 0.00;
+                    $invoice->save();
                 }
             }
 
@@ -140,7 +145,17 @@ class UcIndividualOrderController extends Controller
 
     public function payInvoice($invoiceCode)
     {
-        $invoice = UcInvoice::where('invoice_code', $invoiceCode)->firstOrFail();
+        $invoice = UcInvoice::where('invoice_code', $invoiceCode)->first();
+        if (!$invoice) {
+            $invoice = UcInvoice::where('invoice_code', 'like', "%{$invoiceCode}%")
+                ->orWhereHas('individual_order', function($q) use ($invoiceCode) {
+                    $q->where('order_code', $invoiceCode);
+                })->first();
+        }
+
+        if (!$invoice) {
+            return response()->json(['message' => 'Invoice not found'], 404);
+        }
         
         return DB::transaction(function () use ($invoice) {
             $invoice->status = 'Paid';
@@ -167,15 +182,19 @@ class UcIndividualOrderController extends Controller
 
     public function getInvoiceDetails($invoiceCode)
     {
-        $invoice = UcInvoice::where('invoice_code', $invoiceCode)->firstOrFail();
-        $order = null;
-        if ($invoice->individual_order_id) {
-            $order = UcIndividualOrder::find($invoice->individual_order_id);
+        $invoice = UcInvoice::with('individual_order')->where('invoice_code', $invoiceCode)->first();
+        if (!$invoice) {
+            $invoice = UcInvoice::with('individual_order')
+                ->where('invoice_code', 'like', "%{$invoiceCode}%")
+                ->orWhereHas('individual_order', function($q) use ($invoiceCode) {
+                    $q->where('order_code', $invoiceCode);
+                })->first();
         }
 
-        return response()->json([
-            'invoice' => $invoice,
-            'order' => $order
-        ]);
+        if (!$invoice) {
+            return response()->json(['message' => 'Invoice not found'], 404);
+        }
+
+        return response()->json($invoice);
     }
 }

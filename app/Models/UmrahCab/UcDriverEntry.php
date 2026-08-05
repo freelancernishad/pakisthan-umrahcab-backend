@@ -29,7 +29,8 @@ class UcDriverEntry extends Model
         'waqas_received',
         'mic',
         'total',
-        'is_locked'
+        'is_locked',
+        'manual_vehicle'
     ];
 
     protected $casts = [

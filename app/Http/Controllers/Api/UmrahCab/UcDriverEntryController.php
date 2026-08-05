@@ -82,11 +82,16 @@ class UcDriverEntryController extends Controller
             'waqas_received' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
+            'manual_vehicle' => 'nullable|string|max:255',
         ]);
 
         $validated['driver_id'] = $driver->id;
         if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
-            $validated['vehicle_id'] = $driver->vehicle_id;
+            if (empty($request->input('manual_vehicle'))) {
+                $validated['vehicle_id'] = $driver->vehicle_id;
+            } else {
+                $validated['vehicle_id'] = null;
+            }
         }
         
         // Calculate total if not explicitly provided
@@ -154,10 +159,15 @@ class UcDriverEntryController extends Controller
             'waqas_received' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
+            'manual_vehicle' => 'nullable|string|max:255',
         ]);
 
         if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
-            $validated['vehicle_id'] = $driver->vehicle_id;
+            if (empty($request->input('manual_vehicle'))) {
+                $validated['vehicle_id'] = $driver->vehicle_id;
+            } else {
+                $validated['vehicle_id'] = null;
+            }
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
@@ -219,12 +229,17 @@ class UcDriverEntryController extends Controller
             'waqas_received' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
-            'is_locked' => 'nullable|boolean'
+            'is_locked' => 'nullable|boolean',
+            'manual_vehicle' => 'nullable|string|max:255',
         ]);
 
         $driver = UcDriver::findOrFail($validated['driver_id']);
         if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
-            $validated['vehicle_id'] = $driver->vehicle_id;
+            if (empty($request->input('manual_vehicle'))) {
+                $validated['vehicle_id'] = $driver->vehicle_id;
+            } else {
+                $validated['vehicle_id'] = null;
+            }
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
@@ -278,12 +293,17 @@ class UcDriverEntryController extends Controller
             'waqas_received' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
-            'is_locked' => 'nullable|boolean'
+            'is_locked' => 'nullable|boolean',
+            'manual_vehicle' => 'nullable|string|max:255',
         ]);
 
         $driver = UcDriver::findOrFail($validated['driver_id']);
         if (!array_key_exists('vehicle_id', $validated) || $validated['vehicle_id'] === null) {
-            $validated['vehicle_id'] = $driver->vehicle_id;
+            if (empty($request->input('manual_vehicle'))) {
+                $validated['vehicle_id'] = $driver->vehicle_id;
+            } else {
+                $validated['vehicle_id'] = null;
+            }
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {

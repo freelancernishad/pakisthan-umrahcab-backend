@@ -173,6 +173,8 @@ return new class extends Migration
             $table->string('model');
             $table->integer('count');
             $table->integer('active');
+            $table->integer('capacity')->default(4);
+            $table->integer('luggage')->default(2);
             $table->timestamps();
         });
 

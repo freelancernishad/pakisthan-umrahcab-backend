@@ -14,11 +14,15 @@ class UcFleet extends Model
     protected $fillable = [
         'model',
         'count',
-        'active'
+        'active',
+        'capacity',
+        'luggage'
     ];
 
     protected $casts = [
         'count' => 'integer',
         'active' => 'integer',
+        'capacity' => 'integer',
+        'luggage' => 'integer',
     ];
 }

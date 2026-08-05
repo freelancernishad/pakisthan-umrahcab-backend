@@ -436,27 +436,37 @@ class UmrahCabSeeder extends Seeder
         UcFleet::create([
             'model' => 'Sedan',
             'count' => 25,
-            'active' => 20
+            'active' => 20,
+            'capacity' => 4,
+            'luggage' => 2,
         ]);
         UcFleet::create([
             'model' => 'Ford Taurus',
             'count' => 12,
-            'active' => 10
+            'active' => 10,
+            'capacity' => 4,
+            'luggage' => 3,
         ]);
         UcFleet::create([
             'model' => 'Hyundai H-1 / Staria',
             'count' => 15,
-            'active' => 12
+            'active' => 12,
+            'capacity' => 7,
+            'luggage' => 5,
         ]);
         UcFleet::create([
             'model' => 'GMC Yukon XL',
             'count' => 10,
-            'active' => 8
+            'active' => 8,
+            'capacity' => 7,
+            'luggage' => 6,
         ]);
         UcFleet::create([
             'model' => 'Toyota Hiace',
             'count' => 8,
-            'active' => 6
+            'active' => 6,
+            'capacity' => 10,
+            'luggage' => 8,
         ]);
 
         // 13. Audits

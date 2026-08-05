@@ -19,6 +19,8 @@ class UcFleetController extends Controller
             'model' => 'required|string|unique:uc_fleet,model',
             'count' => 'required|integer|min:0',
             'active' => 'required|integer|min:0',
+            'capacity' => 'nullable|integer|min:1',
+            'luggage' => 'nullable|integer|min:0',
         ]);
 
         $fleet = UcFleet::create($validated);
@@ -35,6 +37,8 @@ class UcFleetController extends Controller
         $validated = $request->validate([
             'count' => 'required|integer',
             'active' => 'required|integer',
+            'capacity' => 'nullable|integer|min:1',
+            'luggage' => 'nullable|integer|min:0',
         ]);
 
         $fleet = UcFleet::findOrFail($id);

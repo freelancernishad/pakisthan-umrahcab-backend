@@ -480,31 +480,38 @@ class UmrahCabSeeder extends Seeder
         // 14. Price Lists
         UcPriceList::create([
             'route' => 'Jeddah Airport To Makkah Hotel',
-            'sedan_price' => 300.00,
-            'suv_price' => 550.00,
-            'van_price' => 500.00,
-            'coach_price' => 900.00
+            'sedan_price' => 200.00,
+            'suv_price' => 450.00,
+            'van_price' => 350.00,
+            'coach_price' => 600.00
         ]);
         UcPriceList::create([
             'route' => 'Makkah Hotel To Jeddah Airport',
-            'sedan_price' => 300.00,
-            'suv_price' => 550.00,
-            'van_price' => 500.00,
-            'coach_price' => 900.00
+            'sedan_price' => 200.00,
+            'suv_price' => 450.00,
+            'van_price' => 350.00,
+            'coach_price' => 600.00
         ]);
         UcPriceList::create([
             'route' => 'Madinah Hotel To Makkah Hotel',
-            'sedan_price' => 300.00,
-            'suv_price' => 550.00,
-            'van_price' => 500.00,
-            'coach_price' => 900.00
+            'sedan_price' => 450.00,
+            'suv_price' => 750.00,
+            'van_price' => 650.00,
+            'coach_price' => 1000.00
         ]);
         UcPriceList::create([
             'route' => 'Makkah Hotel To Madinah Hotel',
-            'sedan_price' => 300.00,
-            'suv_price' => 550.00,
-            'van_price' => 500.00,
-            'coach_price' => 900.00
+            'sedan_price' => 450.00,
+            'suv_price' => 750.00,
+            'van_price' => 650.00,
+            'coach_price' => 1000.00
+        ]);
+        UcPriceList::create([
+            'route' => 'Madinah Airport To Madinah Hotel',
+            'sedan_price' => 150.00,
+            'suv_price' => 300.00,
+            'van_price' => 250.00,
+            'coach_price' => 450.00
         ]);
 
         // 15. Dynamic relational generation (2000 customers)

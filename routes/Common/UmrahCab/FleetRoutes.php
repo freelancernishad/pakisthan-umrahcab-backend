@@ -6,6 +6,8 @@ use App\Http\Middleware\AttachJwtFromCookie;
 use App\Http\Middleware\AuthenticateAdminOrCompany;
 use App\Http\Middleware\AuthenticateAdmin;
 
+Route::get('/public-fleet', [UcFleetController::class, 'index']);
+
 Route::middleware([AttachJwtFromCookie::class])->group(function () {
     Route::middleware(AuthenticateAdminOrCompany::class)->group(function () {
         Route::get('/fleet', [UcFleetController::class, 'index']);

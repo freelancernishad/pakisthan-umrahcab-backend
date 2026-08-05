@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\UmrahCab;
 
 use App\Http\Controllers\Controller;
 use App\Models\UmrahCab\UcPriceList;
+use App\Models\UmrahCab\UcLocation;
 use Illuminate\Http\Request;
 
 class UcPriceListController extends Controller
@@ -195,45 +196,13 @@ class UcPriceListController extends Controller
 
     public function locations()
     {
-        $routes = UcPriceList::pluck('route')->toArray();
-        $locationsSet = [];
-        
-        $fallbackLocations = [
-            "Jeddah Airport (JED) - Terminal 1",
-            "Jeddah Airport (JED) - North Terminal",
-            "Makkah Hotel",
-            "Madinah Hotel",
-            "Jeddah Hotel",
-            "Makkah Haram",
-            "Madinah Haram",
-            "Makkah Station (Haramain)",
-            "Madinah Station (Haramain)",
-            "Jeddah Station (Haramain)",
-            "Taif",
-            "Yanbu"
-        ];
-        
-        foreach ($fallbackLocations as $loc) {
-            $locationsSet[strtolower($loc)] = $loc;
-        }
+        $locations = UcLocation::orderBy('name', 'asc')->pluck('name');
+        return response()->json($locations);
+    }
 
-        foreach ($routes as $route) {
-            if (empty($route)) continue;
-            
-            $routeStr = explode('★', $route)[0];
-            $routeStr = explode('(', $routeStr)[0];
-            $routeStr = trim($routeStr);
-            
-            $parts = preg_split('/\s+to\s+|\s+TO\s+|\s*-\s*|\s*>\s*/i', $routeStr);
-            foreach ($parts as $p) {
-                $cleaned = trim($p);
-                if (strlen($cleaned) > 2) {
-                    $formatted = ucwords(strtolower($cleaned));
-                    $locationsSet[strtolower($formatted)] = $formatted;
-                }
-            }
-        }
-
-        return response()->json(array_values($locationsSet));
+    public function publicRates()
+    {
+        $rates = UcPriceList::all();
+        return response()->json($rates);
     }
 }

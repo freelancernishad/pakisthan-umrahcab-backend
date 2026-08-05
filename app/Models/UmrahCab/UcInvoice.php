@@ -13,6 +13,7 @@ class UcInvoice extends Model
 
     protected $fillable = [
         'customer_id',
+        'individual_order_id',
         'invoice_code',
         'customer',
         'date',
@@ -33,5 +34,10 @@ class UcInvoice extends Model
     public function customer_relation()
     {
         return $this->belongsTo(UcCustomer::class, 'customer_id');
+    }
+
+    public function individual_order()
+    {
+        return $this->belongsTo(UcIndividualOrder::class, 'individual_order_id');
     }
 }

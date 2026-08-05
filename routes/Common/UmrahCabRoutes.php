@@ -25,6 +25,7 @@ Route::prefix('umrahcab')->group(function () {
     require __DIR__ . '/UmrahCab/FleetRoutes.php';
     require __DIR__ . '/UmrahCab/NoticeRoutes.php';
     require __DIR__ . '/UmrahCab/PriceListRoutes.php';
+    require __DIR__ . '/UmrahCab/IndividualOrderRoutes.php';
 
     // Public download route for documents/files
     Route::get('/download-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'downloadFile']);

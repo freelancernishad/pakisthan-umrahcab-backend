@@ -6,9 +6,11 @@ use App\Http\Middleware\AttachJwtFromCookie;
 use App\Http\Middleware\AuthenticateAdminOrCompany;
 use App\Http\Middleware\AuthenticateAdmin;
 
+Route::get('/locations', [UcPriceListController::class, 'locations']);
+Route::get('/public-rates', [UcPriceListController::class, 'publicRates']);
+
 Route::middleware([AttachJwtFromCookie::class])->group(function () {
     Route::middleware(AuthenticateAdminOrCompany::class)->group(function () {
-        Route::get('/locations', [UcPriceListController::class, 'locations']);
         Route::get('/price-list', [UcPriceListController::class, 'index']);
         Route::get('/price-list/groups', [UcPriceListController::class, 'groups']);
     });

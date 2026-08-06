@@ -26,6 +26,7 @@ Route::prefix('umrahcab')->group(function () {
     require __DIR__ . '/UmrahCab/NoticeRoutes.php';
     require __DIR__ . '/UmrahCab/PriceListRoutes.php';
     require __DIR__ . '/UmrahCab/IndividualOrderRoutes.php';
+    require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
 
     // Public download route for documents/files
     Route::get('/download-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'downloadFile']);
@@ -55,7 +56,6 @@ Route::prefix('umrahcab')->group(function () {
         require __DIR__ . '/UmrahCab/SubAdminRoutes.php';
         require __DIR__ . '/UmrahCab/DriverManageRoutes.php';
         require __DIR__ . '/UmrahCab/ChatRoutes.php';
-        require __DIR__ . '/UmrahCab/WebsiteSettingRoutes.php';
         require __DIR__ . '/UmrahCab/DocumentRoutes.php';
     });
 });

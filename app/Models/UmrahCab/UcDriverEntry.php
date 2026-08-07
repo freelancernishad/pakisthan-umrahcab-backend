@@ -27,6 +27,7 @@ class UcDriverEntry extends Model
         'oil_change',
         'car_maintenance',
         'waqas_received',
+        'pay_to_waqas',
         'mic',
         'total',
         'is_locked',
@@ -46,6 +47,7 @@ class UcDriverEntry extends Model
         'oil_change' => 'float',
         'car_maintenance' => 'float',
         'waqas_received' => 'float',
+        'pay_to_waqas' => 'float',
         'mic' => 'float',
         'total' => 'float',
         'is_locked' => 'boolean'

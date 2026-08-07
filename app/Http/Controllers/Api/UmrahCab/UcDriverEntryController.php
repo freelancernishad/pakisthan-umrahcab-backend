@@ -80,6 +80,7 @@ class UcDriverEntryController extends Controller
             'oil_change' => 'nullable|numeric|min:0',
             'car_maintenance' => 'nullable|numeric|min:0',
             'waqas_received' => 'nullable|numeric|min:0',
+            'pay_to_waqas' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
             'manual_vehicle' => 'nullable|string|max:255',
@@ -96,10 +97,9 @@ class UcDriverEntryController extends Controller
         
         // Calculate total if not explicitly provided
         if (!isset($validated['total']) || $validated['total'] === null) {
-            $rate = $validated['rate'] ?? 0;
-            $voucher = $validated['voucher'] ?? 0;
             $cash = $validated['cash'] ?? 0;
             $waqas_received = $validated['waqas_received'] ?? 0;
+            $pay_to_waqas = $validated['pay_to_waqas'] ?? 0;
             $fuel = $validated['fuel'] ?? 0;
             $parking = $validated['parking'] ?? 0;
             $wash = $validated['wash'] ?? 0;
@@ -107,8 +107,9 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            // Total Cash Earnings = cash + waqas_received minus total expenses
-            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
+            $earnings = $cash + $waqas_received;
+            $expenses = $fuel + $parking + $wash + $oil_change + $car_maintenance + $pay_to_waqas + $mic;
+            $validated['total'] = $earnings - $expenses;
         }
 
         $validated['is_locked'] = true; // Locked by default on submission
@@ -157,6 +158,7 @@ class UcDriverEntryController extends Controller
             'oil_change' => 'nullable|numeric|min:0',
             'car_maintenance' => 'nullable|numeric|min:0',
             'waqas_received' => 'nullable|numeric|min:0',
+            'pay_to_waqas' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
             'manual_vehicle' => 'nullable|string|max:255',
@@ -171,10 +173,9 @@ class UcDriverEntryController extends Controller
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
-            $rate = $validated['rate'] ?? 0;
-            $voucher = $validated['voucher'] ?? 0;
             $cash = $validated['cash'] ?? 0;
             $waqas_received = $validated['waqas_received'] ?? 0;
+            $pay_to_waqas = $validated['pay_to_waqas'] ?? 0;
             $fuel = $validated['fuel'] ?? 0;
             $parking = $validated['parking'] ?? 0;
             $wash = $validated['wash'] ?? 0;
@@ -182,7 +183,9 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
+            $earnings = $cash + $waqas_received;
+            $expenses = $fuel + $parking + $wash + $oil_change + $car_maintenance + $pay_to_waqas + $mic;
+            $validated['total'] = $earnings - $expenses;
         }
 
         // If it was edited, lock it again
@@ -227,6 +230,7 @@ class UcDriverEntryController extends Controller
             'oil_change' => 'nullable|numeric|min:0',
             'car_maintenance' => 'nullable|numeric|min:0',
             'waqas_received' => 'nullable|numeric|min:0',
+            'pay_to_waqas' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
             'is_locked' => 'nullable|boolean',
@@ -243,10 +247,9 @@ class UcDriverEntryController extends Controller
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
-            $rate = $validated['rate'] ?? 0;
-            $voucher = $validated['voucher'] ?? 0;
             $cash = $validated['cash'] ?? 0;
             $waqas_received = $validated['waqas_received'] ?? 0;
+            $pay_to_waqas = $validated['pay_to_waqas'] ?? 0;
             $fuel = $validated['fuel'] ?? 0;
             $parking = $validated['parking'] ?? 0;
             $wash = $validated['wash'] ?? 0;
@@ -254,7 +257,9 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
+            $earnings = $cash + $waqas_received;
+            $expenses = $fuel + $parking + $wash + $oil_change + $car_maintenance + $pay_to_waqas + $mic;
+            $validated['total'] = $earnings - $expenses;
         }
 
         $validated['is_locked'] = $request->input('is_locked', true);
@@ -291,6 +296,7 @@ class UcDriverEntryController extends Controller
             'oil_change' => 'nullable|numeric|min:0',
             'car_maintenance' => 'nullable|numeric|min:0',
             'waqas_received' => 'nullable|numeric|min:0',
+            'pay_to_waqas' => 'nullable|numeric|min:0',
             'mic' => 'nullable|numeric|min:0',
             'total' => 'nullable|numeric',
             'is_locked' => 'nullable|boolean',
@@ -307,10 +313,9 @@ class UcDriverEntryController extends Controller
         }
 
         if (!isset($validated['total']) || $validated['total'] === null) {
-            $rate = $validated['rate'] ?? 0;
-            $voucher = $validated['voucher'] ?? 0;
             $cash = $validated['cash'] ?? 0;
             $waqas_received = $validated['waqas_received'] ?? 0;
+            $pay_to_waqas = $validated['pay_to_waqas'] ?? 0;
             $fuel = $validated['fuel'] ?? 0;
             $parking = $validated['parking'] ?? 0;
             $wash = $validated['wash'] ?? 0;
@@ -318,7 +323,9 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
+            $earnings = $cash + $waqas_received;
+            $expenses = $fuel + $parking + $wash + $oil_change + $car_maintenance + $pay_to_waqas + $mic;
+            $validated['total'] = $earnings - $expenses;
         }
 
         if ($request->has('is_locked')) {

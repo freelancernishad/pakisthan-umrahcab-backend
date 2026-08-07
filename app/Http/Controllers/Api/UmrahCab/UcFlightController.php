@@ -63,7 +63,7 @@ class UcFlightController extends Controller
             'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'flight_no' => 'required|string',
             'leg' => 'required|string',
-            'date' => 'required|date',
+            'date' => 'required|date|after_or_equal:today',
             'time' => 'required',
             'route' => 'required|string',
         ]);
@@ -126,7 +126,15 @@ class UcFlightController extends Controller
             'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'flight_no' => 'required|string',
             'leg' => 'required|string',
-            'date' => 'required|date',
+            'date' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) use ($flight) {
+                    if ($value !== $flight->date && \Carbon\Carbon::parse($value)->lt(today())) {
+                        $fail('The ' . $attribute . ' cannot be set to a past date.');
+                    }
+                }
+            ],
             'time' => 'required',
             'route' => 'required|string',
             'status' => 'required|string',

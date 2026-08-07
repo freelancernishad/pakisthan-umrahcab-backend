@@ -67,7 +67,7 @@ class UcServiceController extends Controller
             'status' => 'nullable|string',
             'pickup' => 'nullable|string',
             'driver_cash' => 'nullable|numeric',
-            'date' => 'nullable|date',
+            'date' => 'nullable|date|after_or_equal:today',
             'time' => 'nullable|string',
         ]);
 
@@ -100,7 +100,15 @@ class UcServiceController extends Controller
             'status' => 'nullable|string',
             'pickup' => 'nullable|string',
             'driver_cash' => 'nullable|numeric',
-            'date' => 'nullable|date',
+            'date' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($service) {
+                    if ($value !== $service->date && \Carbon\Carbon::parse($value)->lt(today())) {
+                        $fail('The ' . $attribute . ' cannot be set to a past date.');
+                    }
+                }
+            ],
             'time' => 'nullable|string',
         ]);
 

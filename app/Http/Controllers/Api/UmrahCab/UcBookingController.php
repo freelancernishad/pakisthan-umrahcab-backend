@@ -36,7 +36,7 @@ class UcBookingController extends Controller
             'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'pickup' => 'required|string',
             'destination' => 'required|string',
-            'date' => 'required|date',
+            'date' => 'required|date|after_or_equal:today',
             'time' => 'required',
             'passengers' => 'required|string',
             'car_type' => 'required|string',
@@ -156,7 +156,15 @@ class UcBookingController extends Controller
             'driver_id' => 'nullable|integer|exists:uc_drivers,id',
             'pickup' => 'nullable|string',
             'destination' => 'nullable|string',
-            'date' => 'nullable|date',
+            'date' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($booking) {
+                    if ($value !== $booking->date && \Carbon\Carbon::parse($value)->lt(today())) {
+                        $fail('The ' . $attribute . ' cannot be set to a past date.');
+                    }
+                }
+            ],
             'time' => 'nullable',
             'passengers' => 'nullable|string',
             'car_type' => 'nullable|string',

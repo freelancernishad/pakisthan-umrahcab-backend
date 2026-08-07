@@ -66,7 +66,7 @@ class UcDriverEntryController extends Controller
         }
 
         $validated = $request->validate([
-            'date' => 'required|date',
+            'date' => 'required|date|after_or_equal:today',
             'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',
@@ -144,7 +144,15 @@ class UcDriverEntryController extends Controller
         }
 
         $validated = $request->validate([
-            'date' => 'required|date',
+            'date' => [
+                'required',
+                'date',
+                function ($attribute, $value, $fail) use ($entry) {
+                    if ($value !== $entry->date && \Carbon\Carbon::parse($value)->lt(today())) {
+                        $fail('The ' . $attribute . ' cannot be set to a past date.');
+                    }
+                }
+            ],
             'vehicle_id' => 'nullable|exists:uc_fleet,id',
             'trip' => 'nullable|string|max:255',
             'hotel_drop_off' => 'nullable|string|max:255',

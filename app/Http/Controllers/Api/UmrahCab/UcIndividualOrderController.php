@@ -38,7 +38,7 @@ class UcIndividualOrderController extends Controller
         $validated = $request->validate([
             'pickup' => 'required|string',
             'destination' => 'required|string',
-            'date' => 'required|date_format:Y-m-d',
+            'date' => 'required|date_format:Y-m-d|after_or_equal:today',
             'time' => 'required|string',
             'passengers' => 'required|string',
             'car_type' => 'required|string',

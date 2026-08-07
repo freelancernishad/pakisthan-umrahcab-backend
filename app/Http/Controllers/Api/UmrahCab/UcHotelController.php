@@ -60,8 +60,8 @@ class UcHotelController extends Controller
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'active' => 'sometimes|integer|in:0,1',
-            'check_in' => 'nullable|string|max:255',
-            'check_out' => 'nullable|string|max:255'
+            'check_in' => 'nullable|date|after_or_equal:today',
+            'check_out' => 'nullable|date|after_or_equal:check_in'
         ]);
 
         $count = UcHotel::count() + 101;
@@ -114,8 +114,25 @@ class UcHotelController extends Controller
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
             'active' => 'required|integer|in:0,1',
-            'check_in' => 'nullable|string|max:255',
-            'check_out' => 'nullable|string|max:255',
+            'check_in' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($hotel) {
+                    if ($value !== $hotel->check_in && \Carbon\Carbon::parse($value)->lt(today())) {
+                        $fail('The ' . $attribute . ' cannot be set to a past date.');
+                    }
+                }
+            ],
+            'check_out' => [
+                'nullable',
+                'date',
+                function ($attribute, $value, $fail) use ($hotel, $request) {
+                    $checkInVal = $request->input('check_in', $hotel->check_in);
+                    if ($value && $checkInVal && \Carbon\Carbon::parse($value)->lt(\Carbon\Carbon::parse($checkInVal))) {
+                        $fail('The ' . $attribute . ' must be a date after or equal to check in date.');
+                    }
+                }
+            ],
             'driver_trip_status' => 'nullable|string'
         ]);
 

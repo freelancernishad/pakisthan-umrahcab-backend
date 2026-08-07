@@ -108,7 +108,7 @@ class UcDriverEntryController extends Controller
             $mic = $validated['mic'] ?? 0;
 
             // Total Cash Earnings = cash + waqas_received minus total expenses
-            $validated['total'] = ($cash + $waqas_received) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
         }
 
         $validated['is_locked'] = true; // Locked by default on submission
@@ -182,7 +182,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($cash + $waqas_received) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
         }
 
         // If it was edited, lock it again
@@ -254,7 +254,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($cash + $waqas_received) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
         }
 
         $validated['is_locked'] = $request->input('is_locked', true);
@@ -318,7 +318,7 @@ class UcDriverEntryController extends Controller
             $car_maintenance = $validated['car_maintenance'] ?? 0;
             $mic = $validated['mic'] ?? 0;
 
-            $validated['total'] = ($cash + $waqas_received) - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $mic);
+            $validated['total'] = $cash - ($fuel + $parking + $wash + $oil_change + $car_maintenance + $waqas_received + $mic);
         }
 
         if ($request->has('is_locked')) {

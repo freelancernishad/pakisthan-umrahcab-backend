@@ -113,15 +113,6 @@ class UcBookingController extends Controller
         ], 201);
     }
 
-    public function getStatus($code)
-    {
-        $booking = UcBooking::where('booking_code', $code)
-            ->orWhere('full_name', 'like', "%{$code}%")
-            ->get();
-
-        return response()->json($booking);
-    }
-
     public function show($id)
     {
         $booking = UcBooking::with('driver')->where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
@@ -504,5 +495,92 @@ class UcBookingController extends Controller
             'success' => true,
             'data' => $logs
         ]);
+    }
+
+    /**
+     * Public method to check booking/invoice status by code, name, phone or invoice.
+     */
+    public function getStatus($code)
+    {
+        $code = trim($code);
+        if (empty($code)) {
+            return response()->json([]);
+        }
+
+        $results = [];
+
+        // 1. Search UcBooking
+        $bookings = UcBooking::with(['customer', 'driver', 'vehicle'])
+            ->where('booking_code', $code)
+            ->orWhere('custom_id', $code)
+            ->orWhere('id', $code)
+            ->orWhere('full_name', 'like', "%{$code}%")
+            ->orWhere('whatsapp', 'like', "%{$code}%")
+            ->get();
+
+        foreach ($bookings as $b) {
+            $results[] = [
+                'id' => $b->booking_code ?: ($b->custom_id ?: "UCB-{$b->id}"),
+                'booking_code' => $b->booking_code ?: ($b->custom_id ?: "UCB-{$b->id}"),
+                'pickup' => $b->pickup,
+                'destination' => $b->destination,
+                'date' => $b->date,
+                'time' => $b->time,
+                'car_type' => $b->car_type,
+                'car_price' => $b->car_price,
+                'full_name' => $b->full_name,
+                'status' => $b->status ?: 'Active'
+            ];
+        }
+
+        // 2. Search UcIndividualOrder
+        $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+            ->where('order_code', $code)
+            ->orWhere('full_name', 'like', "%{$code}%")
+            ->orWhere('whatsapp', 'like', "%{$code}%")
+            ->orWhere('email', 'like', "%{$code}%")
+            ->orWhereHas('invoice', function($q) use ($code) {
+                $q->where('invoice_code', $code);
+            })
+            ->get();
+
+        foreach ($orders as $ord) {
+            $results[] = [
+                'id' => $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code,
+                'booking_code' => $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code,
+                'pickup' => $ord->pickup,
+                'destination' => $ord->destination,
+                'date' => $ord->date,
+                'time' => $ord->time,
+                'car_type' => $ord->car_type,
+                'car_price' => $ord->car_price,
+                'full_name' => $ord->full_name,
+                'status' => $ord->status ?: 'Pending'
+            ];
+        }
+
+        // 3. Search UcInvoice by invoice_code
+        if (empty($results)) {
+            $invoices = \App\Models\UmrahCab\UcInvoice::with('individual_order')
+                ->where('invoice_code', $code)
+                ->get();
+            foreach ($invoices as $inv) {
+                $ord = $inv->individual_order;
+                $results[] = [
+                    'id' => $inv->invoice_code,
+                    'booking_code' => $inv->invoice_code,
+                    'pickup' => $ord ? $ord->pickup : '—',
+                    'destination' => $ord ? $ord->destination : '—',
+                    'date' => $inv->date,
+                    'time' => $ord ? $ord->time : '—',
+                    'car_type' => $ord ? $ord->car_type : 'Standard',
+                    'car_price' => $inv->amount,
+                    'full_name' => $inv->customer,
+                    'status' => $inv->status
+                ];
+            }
+        }
+
+        return response()->json($results);
     }
 }

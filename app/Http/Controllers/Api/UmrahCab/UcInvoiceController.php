@@ -32,8 +32,11 @@ class UcInvoiceController extends Controller
 
         // Company filter
         if ($company = $request->get('company')) {
-            $query->whereHas('customer_relation', function ($cQ) use ($company) {
-                $cQ->where('company', $company);
+            $query->where(function ($q) use ($company) {
+                $q->where('customer', $company)
+                  ->orWhereHas('customer_relation', function ($cQ) use ($company) {
+                      $cQ->where('company', $company);
+                  });
             });
         }
 

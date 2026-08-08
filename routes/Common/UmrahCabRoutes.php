@@ -31,6 +31,12 @@ Route::prefix('umrahcab')->group(function () {
     // Public download route for documents/files
     Route::get('/download-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'downloadFile']);
     Route::get('/view-file', [App\Http\Controllers\Api\UmrahCab\UcDocumentController::class, 'viewFile']);
+    Route::get('/server-time', function () {
+        return response()->json([
+            'time' => now()->timezone('Asia/Riyadh')->toIso8601String(),
+            'date' => now()->timezone('Asia/Riyadh')->format('Y-m-d')
+        ]);
+    });
 
     // ---------------------------------------------------------
     // 2. Strictly Administrative Control Routes (Admin Only)

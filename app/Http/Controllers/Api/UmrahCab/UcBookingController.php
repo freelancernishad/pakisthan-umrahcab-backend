@@ -81,7 +81,13 @@ class UcBookingController extends Controller
             $validated['pending_amount'] = 0;
         }
 
-        $validated['booking_code'] = 'UCB-' . rand(100000, 999999);
+        if (empty($validated['booking_code'])) {
+            $lastBooking = UcBooking::orderBy('id', 'desc')->first();
+            $nextNum = 10000 + ($lastBooking ? ($lastBooking->id + 1) : 1);
+            $validated['booking_code'] = 'HCB-' . $nextNum;
+        } else {
+            $validated['booking_code'] = preg_replace('/^UCB-/i', 'HCB-', $validated['booking_code']);
+        }
         $validated['status'] = 'Pending Check';
 
         $booking = UcBooking::create($validated);
@@ -99,7 +105,7 @@ class UcBookingController extends Controller
                 'company' => $companyName,
                 'custom_id' => 'LED-' . rand(1000, 9999),
                 'date' => date('Y-m-d'),
-                'description' => 'Booking Created: ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                'description' => 'Booking Created: ' . ($booking->booking_code ?? ('HCB-' . (10000 + $booking->id))),
                 'debit' => $amount,
                 'credit' => 0,
                 'balance' => $newBalance
@@ -263,7 +269,7 @@ class UcBookingController extends Controller
                     'company' => $companyName,
                     'custom_id' => 'LED-' . rand(1000, 9999),
                     'date' => date('Y-m-d'),
-                    'description' => 'Booking Refund (Admin Rejected): ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                    'description' => 'Booking Refund (Admin Rejected): ' . ($booking->booking_code ?? ('HCB-' . (10000 + $booking->id))),
                     'debit' => 0,
                     'credit' => $amount,
                     'balance' => $newBalance
@@ -279,7 +285,7 @@ class UcBookingController extends Controller
                     'company' => $companyName,
                     'custom_id' => 'LED-' . rand(1000, 9999),
                     'date' => date('Y-m-d'),
-                    'description' => 'Booking Re-charged: ' . ($booking->booking_code ?? 'UCB-'.$booking->id),
+                    'description' => 'Booking Re-charged: ' . ($booking->booking_code ?? ('HCB-' . (10000 + $booking->id))),
                     'debit' => $amount,
                     'credit' => 0,
                     'balance' => $newBalance
@@ -527,9 +533,10 @@ class UcBookingController extends Controller
             ->get();
 
         foreach ($bookings as $b) {
+            $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
             $results[] = [
-                'id' => $b->booking_code ?: ($b->custom_id ?: "UCB-{$b->id}"),
-                'booking_code' => $b->booking_code ?: ($b->custom_id ?: "UCB-{$b->id}"),
+                'id' => $bCode,
+                'booking_code' => $bCode,
                 'pickup' => $b->pickup,
                 'destination' => $b->destination,
                 'date' => $b->date,

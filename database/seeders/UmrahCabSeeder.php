@@ -94,7 +94,7 @@ class UmrahCabSeeder extends Seeder
         // 3. Bookings
         UcBooking::create([
             'customer_id' => $c2->id,
-            'booking_code' => 'UCB-8736',
+            'booking_code' => 'HCB-10001',
             'pickup' => 'Jeddah Airport',
             'destination' => 'Makkah Hotel',
             'date' => '2026-05-25',
@@ -112,7 +112,7 @@ class UmrahCabSeeder extends Seeder
 
         UcBooking::create([
             'customer_id' => $c1->id,
-            'booking_code' => 'UCB-1092',
+            'booking_code' => 'HCB-10002',
             'pickup' => 'Madinah Hotel',
             'destination' => 'Jeddah Airport',
             'date' => '2026-05-28',
@@ -130,7 +130,7 @@ class UmrahCabSeeder extends Seeder
 
         UcBooking::create([
             'customer_id' => $c1->id,
-            'booking_code' => 'UCB-1093',
+            'booking_code' => 'HCB-10003',
             'pickup' => 'Jeddah Airport',
             'destination' => 'Madinah Hotel',
             'date' => '2026-05-29',
@@ -148,7 +148,7 @@ class UmrahCabSeeder extends Seeder
 
         UcBooking::create([
             'customer_id' => $c1->id,
-            'booking_code' => 'UCB-1094',
+            'booking_code' => 'HCB-10004',
             'pickup' => 'Makkah Hotel',
             'destination' => 'Jeddah Airport',
             'date' => '2026-05-30',
@@ -166,7 +166,7 @@ class UmrahCabSeeder extends Seeder
 
         UcBooking::create([
             'customer_id' => $c1->id,
-            'booking_code' => 'UCB-1095',
+            'booking_code' => 'HCB-10005',
             'pickup' => 'Makkah Hotel',
             'destination' => 'Taif Ziyarah',
             'date' => '2026-05-31',
@@ -404,7 +404,7 @@ class UmrahCabSeeder extends Seeder
             'custom_id' => 'LED-8744',
             'company' => 'Zahid Travels',
             'date' => '2026-05-22',
-            'description' => 'Booking transport charges UCB-8736',
+            'description' => 'Booking transport charges HCB-10001',
             'debit' => 300.00,
             'credit' => 0.00,
             'balance' => 3700.00
@@ -482,7 +482,7 @@ class UmrahCabSeeder extends Seeder
             'custom_id' => '#AUD-4911',
             'user_session' => 'hebacab',
             'ip_location' => '192.168.0.104',
-            'performed_action' => 'Registered transport booking record UCB-8736'
+            'performed_action' => 'Registered transport booking record HCB-10001'
         ]);
         UcAudit::create([
             'customer_id' => $c3->id,
@@ -573,7 +573,7 @@ class UmrahCabSeeder extends Seeder
             for ($b = 1; $b <= $numBookings; $b++) {
                 $bookingsData[] = [
                     'customer_id' => $i,
-                    'booking_code' => 'UCB-' . (10000 * $b + $i),
+                    'booking_code' => 'HCB-' . (10000 + ($i * 10 + $b)),
                     'pickup' => $pickups[array_rand($pickups)],
                     'destination' => $destinations[array_rand($destinations)],
                     'date' => date('Y-m-d', strtotime("+$i days")),

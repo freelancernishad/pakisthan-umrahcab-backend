@@ -62,7 +62,10 @@ class UcCustomerController extends Controller
 
         $count = UcCustomer::count() + 1;
         $validated['custom_id'] = "#CST-{$count}";
-        $validated['registered_by'] = 'umrahcab (Today)';
+        
+        $authUser = $request->user();
+        $adminName = $authUser ? ($authUser->name ?: ($authUser->username ?: 'hebacab')) : 'hebacab';
+        $validated['registered_by'] = $request->input('registered_by', "{$adminName} (Today)");
         $validated['last_update'] = 'No edits';
 
         $customer = UcCustomer::create($validated);
@@ -101,7 +104,9 @@ class UcCustomerController extends Controller
             $validated['contact'] = trim("{$phones}{$emailInfo}{$passportInfo}{$hotelInfo}{$notesInfo}") ?: 'N/A';
         }
 
-        $validated['last_update'] = 'umrahcab (Edited Today)';
+        $authUser = $request->user();
+        $adminName = $authUser ? ($authUser->name ?: ($authUser->username ?: 'hebacab')) : 'hebacab';
+        $validated['last_update'] = $request->input('last_update', "{$adminName} (Edited Today)");
 
         $customer->update($validated);
 

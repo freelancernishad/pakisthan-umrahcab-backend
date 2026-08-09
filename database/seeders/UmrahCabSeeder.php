@@ -69,8 +69,8 @@ class UmrahCabSeeder extends Seeder
             'name' => 'Abu Bakar',
             'company' => 'Zahid Travels',
             'contact' => '123456789 (P), N/A (Email)',
-            'registered_by' => 'umrahcab (22-May-2026)',
-            'last_update' => 'umrahcab (22-May-2026)'
+            'registered_by' => 'hebacab (22-May-2026)',
+            'last_update' => 'hebacab (22-May-2026)'
         ]);
 
         $c2 = UcCustomer::create([
@@ -78,7 +78,7 @@ class UmrahCabSeeder extends Seeder
             'name' => 'Amjad',
             'company' => 'Zahid Travels',
             'contact' => '123456 (P), N/A (Email)',
-            'registered_by' => 'umrahcab (22-May-2026)',
+            'registered_by' => 'hebacab (22-May-2026)',
             'last_update' => 'No edits'
         ]);
 
@@ -87,7 +87,7 @@ class UmrahCabSeeder extends Seeder
             'name' => 'Mohammed Siddique',
             'company' => 'Al-Latif Group',
             'contact' => '987654321 (P), sid@allatif.com',
-            'registered_by' => 'umrahcab (23-May-2026)',
+            'registered_by' => 'hebacab (23-May-2026)',
             'last_update' => 'No edits'
         ]);
 
@@ -473,21 +473,21 @@ class UmrahCabSeeder extends Seeder
         UcAudit::create([
             'customer_id' => $c1->id,
             'custom_id' => '#AUD-4912',
-            'user_session' => 'umrahcab',
+            'user_session' => 'hebacab',
             'ip_location' => '192.168.0.104',
             'performed_action' => 'Unlocked Extras utilities panel via passcode'
         ]);
         UcAudit::create([
             'customer_id' => $c2->id,
             'custom_id' => '#AUD-4911',
-            'user_session' => 'umrahcab',
+            'user_session' => 'hebacab',
             'ip_location' => '192.168.0.104',
             'performed_action' => 'Registered transport booking record UCB-8736'
         ]);
         UcAudit::create([
             'customer_id' => $c3->id,
             'custom_id' => '#AUD-4910',
-            'user_session' => 'umrahcab',
+            'user_session' => 'hebacab',
             'ip_location' => '192.168.0.104',
             'performed_action' => 'Dashboard login authorization verification success'
         ]);
@@ -562,7 +562,7 @@ class UmrahCabSeeder extends Seeder
                 'name' => $name,
                 'company' => $comp,
                 'contact' => (966000000 + $i) . ' (P), customer' . $i . '@example.com (Email) | Notes: Dynamic Customer ' . $i,
-                'registered_by' => 'umrahcab',
+                'registered_by' => 'hebacab',
                 'last_update' => 'No edits',
                 'created_at' => $now,
                 'updated_at' => $now

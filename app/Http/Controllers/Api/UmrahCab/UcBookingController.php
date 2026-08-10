@@ -119,9 +119,47 @@ class UcBookingController extends Controller
         ], 201);
     }
 
+    private function findBookingFlexible($id, $withDriver = false)
+    {
+        $idVariants = [
+            $id,
+            preg_replace('/^HCB-/i', 'UCB-', $id),
+            preg_replace('/^UCB-/i', 'HCB-', $id),
+            preg_replace('/^(HCB|UCB)-/i', '', $id),
+        ];
+
+        $query = UcBooking::query();
+        if ($withDriver) {
+            $query->with('driver');
+        }
+
+        $booking = $query->where(function ($q) use ($id, $idVariants) {
+            $q->whereIn('booking_code', $idVariants);
+            if (is_numeric($id)) {
+                $q->orWhere('id', $id);
+            }
+        })->first();
+
+        // Also check if id is derived from HCB-10000 + id
+        if (!$booking && preg_match('/^(HCB|UCB)-(\d+)$/i', $id, $matches)) {
+            $possibleId = intval($matches[2]) - 10000;
+            if ($possibleId > 0) {
+                $booking = $withDriver ? UcBooking::with('driver')->find($possibleId) : UcBooking::find($possibleId);
+            }
+            if (!$booking) {
+                $booking = $withDriver ? UcBooking::with('driver')->find(intval($matches[2])) : UcBooking::find(intval($matches[2]));
+            }
+        }
+
+        return $booking;
+    }
+
     public function show($id)
     {
-        $booking = UcBooking::with('driver')->where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        $booking = $this->findBookingFlexible($id, true);
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Booking details not found.'], 404);
+        }
         if (\Illuminate\Support\Facades\Auth::guard('company')->check()) {
             $company = \Illuminate\Support\Facades\Auth::guard('company')->user();
             $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);
@@ -145,7 +183,10 @@ class UcBookingController extends Controller
 
     public function update(Request $request, $id)
     {
-        $booking = UcBooking::where('id', $id)->orWhere('booking_code', $id)->firstOrFail();
+        $booking = $this->findBookingFlexible($id, false);
+        if (!$booking) {
+            return response()->json(['success' => false, 'message' => 'Booking not found.'], 404);
+        }
         if (\Illuminate\Support\Facades\Auth::guard('company')->check()) {
             $company = \Illuminate\Support\Facades\Auth::guard('company')->user();
             $customer = \App\Models\UmrahCab\UcCustomer::find($booking->customer_id);

@@ -39,20 +39,22 @@ class WhitelistOriginMiddleware
             return $next($request);
         }
 
+        // Allow localhost and 127.0.0.1 on any port for dev
+        if (preg_match('#^https?://(localhost|127\.0\.0\.1)(:\d+)?$#i', $origin)) {
+            return $next($request);
+        }
+
         // Check whitelisted list
         if (in_array($origin, $allowedOrigins)) {
             return $next($request);
         }
 
-        // Check if all origins allowed in DB
-        $allowedAll = AllowedOrigin::where('origin_url', '*')->exists();
-        if ($allowedAll) {
-            return $next($request);
-        }
+        // Check if all origins or specific origin allowed in DB (cached)
+        $isAllowed = \Illuminate\Support\Facades\Cache::remember('allowed_origin_' . md5($origin), 3600, function () use ($origin) {
+            return AllowedOrigin::where('origin_url', '*')->orWhere('origin_url', $origin)->exists();
+        });
 
-        // Check specific origin in DB
-        $allowedDbOrigin = AllowedOrigin::where('origin_url', $origin)->exists();
-        if ($allowedDbOrigin) {
+        if ($isAllowed) {
             return $next($request);
         }
 

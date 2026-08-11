@@ -10,12 +10,53 @@ use Illuminate\Support\Facades\Cache;
 class UcWebsiteSettingController extends Controller
 {
     /**
+     * Allowed public settings keys needed for public site & home page.
+     */
+    private static $publicKeys = [
+        'site_title',
+        'meta_description',
+        'meta_keywords',
+        'contact_email',
+        'contact_phone',
+        'contact_address',
+        'whatsapp_link',
+        'whatsapp_link_pak',
+        'facebook_link',
+        'instagram_link',
+        'twitter_link',
+        'website_logo',
+        'favicon',
+        'ride_notification_enabled',
+        'hero_title',
+        'hero_desc',
+        'feature_1',
+        'feature_2',
+        'feature_3',
+        'booking_title',
+        'booking_subtitle',
+        'app_title',
+        'app_desc',
+        'app_store_link',
+        'play_store_link',
+        'contact_title',
+        'contact_desc',
+        'homepage_offers',
+        'hero_bg_image',
+    ];
+
+    /**
      * Helper to format setting values (especially image URLs).
      */
-    private function formatSettings(Request $request)
+    private function formatSettings(Request $request, bool $onlyPublic = true)
     {
-        $settings = Cache::remember('uc_raw_website_settings', 86400, function () {
-            return UcWebsiteSetting::all()->pluck('value', 'key')->toArray();
+        $cacheKey = $onlyPublic ? 'uc_public_website_settings' : 'uc_all_website_settings';
+
+        $settings = Cache::remember($cacheKey, 86400, function () use ($onlyPublic) {
+            $query = UcWebsiteSetting::query();
+            if ($onlyPublic) {
+                $query->whereIn('key', self::$publicKeys);
+            }
+            return $query->pluck('value', 'key')->toArray();
         });
 
         $formatted = [];
@@ -51,7 +92,7 @@ class UcWebsiteSettingController extends Controller
      */
     public function index(Request $request)
     {
-        $data = $this->formatSettings($request);
+        $data = $this->formatSettings($request, true);
         $json = json_encode($data);
         $etag = md5($json);
 
@@ -63,7 +104,7 @@ class UcWebsiteSettingController extends Controller
         return response($json, 200, [
             'Content-Type' => 'application/json; charset=utf-8',
             'ETag' => $etag,
-            'Cache-Control' => 'public, max-age=60, stale-while-revalidate=300'
+            'Cache-Control' => 'public, max-age=120, stale-while-revalidate=600'
         ]);
     }
 
@@ -126,13 +167,14 @@ class UcWebsiteSettingController extends Controller
             }
         }
 
-        // Invalidate backend cache
-        Cache::forget('uc_raw_website_settings');
+        // Invalidate backend caches
+        Cache::forget('uc_public_website_settings');
+        Cache::forget('uc_all_website_settings');
 
         return response()->json([
             'success' => true,
             'message' => 'Website settings saved successfully!',
-            'data' => $this->formatSettings($request)
+            'data' => $this->formatSettings($request, false)
         ], 200);
     }
 }

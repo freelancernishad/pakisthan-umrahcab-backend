@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\UmrahCab;
 use App\Http\Controllers\Controller;
 use App\Models\UmrahCab\UcWebsiteSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class UcWebsiteSettingController extends Controller
 {
@@ -13,13 +14,15 @@ class UcWebsiteSettingController extends Controller
      */
     private function formatSettings(Request $request)
     {
-        $settings = UcWebsiteSetting::all()->pluck('value', 'key');
+        $settings = Cache::remember('uc_raw_website_settings', 86400, function () {
+            return UcWebsiteSetting::all()->pluck('value', 'key')->toArray();
+        });
+
         $formatted = [];
         $appUrl = rtrim($request->schemeAndHttpHost() ?: (config('app.url') ?: 'http://localhost:8000'), '/');
         $host = strtolower($request->getHost());
 
         // Check if current web environment serves uploads under /public/uploads/ or /uploads/
-        // If host is not localhost and SCRIPT_NAME or URI contains /public, or request is to live production server root
         $isProjectRootWeb = !str_contains($host, 'localhost') && !str_contains($host, '127.0.0.1');
 
         foreach ($settings as $key => $value) {
@@ -44,10 +47,24 @@ class UcWebsiteSettingController extends Controller
 
     /**
      * Get all website settings as key-value pairs.
+     * Highly optimized for frontend with fast caching & 304 Not Modified support.
      */
     public function index(Request $request)
     {
-        return response()->json($this->formatSettings($request));
+        $data = $this->formatSettings($request);
+        $json = json_encode($data);
+        $etag = md5($json);
+
+        // Check client ETag for instant 304 response
+        if ($request->header('If-None-Match') === $etag) {
+            return response('', 304)->header('ETag', $etag);
+        }
+
+        return response($json, 200, [
+            'Content-Type' => 'application/json; charset=utf-8',
+            'ETag' => $etag,
+            'Cache-Control' => 'public, max-age=60, stale-while-revalidate=300'
+        ]);
     }
 
     /**
@@ -108,6 +125,9 @@ class UcWebsiteSettingController extends Controller
                 UcWebsiteSetting::setValue($key, $value);
             }
         }
+
+        // Invalidate backend cache
+        Cache::forget('uc_raw_website_settings');
 
         return response()->json([
             'success' => true,

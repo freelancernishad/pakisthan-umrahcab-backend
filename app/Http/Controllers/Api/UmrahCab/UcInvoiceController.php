@@ -142,25 +142,27 @@ class UcInvoiceController extends Controller
 
         $customerIds = \App\Models\UmrahCab\UcCustomer::where('company', $company)->pluck('id');
 
-        // Calculate Previous Balance
-        $prevBookingsSum = \DB::table('uc_bookings')
-            ->whereIn('customer_id', $customerIds)
-            ->where('date', '<', $startDate)
-            ->where('status', '!=', 'Cancelled')
-            ->sum('car_price');
+        $rawPrevBalance = 0.0;
+        if ($customerIds->isNotEmpty()) {
+            $prevBookingsSum = \DB::table('uc_bookings')
+                ->whereIn('customer_id', $customerIds)
+                ->where('date', '<', $startDate)
+                ->where('status', '!=', 'Cancelled')
+                ->sum('car_price');
 
-        $prevServicesSum = \DB::table('uc_services')
-            ->whereIn('customer_id', $customerIds)
-            ->where('date', '<', $startDate)
-            ->where('status', '!=', 'Cancelled')
-            ->sum('base_price');
+            $prevServicesSum = \DB::table('uc_services')
+                ->whereIn('customer_id', $customerIds)
+                ->where('date', '<', $startDate)
+                ->where('status', '!=', 'Cancelled')
+                ->sum('base_price');
 
-        $prevPaymentsSum = \DB::table('uc_payments')
-            ->where('company', $company)
-            ->where('date', '<', $startDate)
-            ->sum('amount');
+            $prevPaymentsSum = \DB::table('uc_payments')
+                ->where('company', $company)
+                ->where('date', '<', $startDate)
+                ->sum('amount');
 
-        $prevBalance = ($prevBookingsSum + $prevServicesSum) - $prevPaymentsSum;
+            $rawPrevBalance = (float)(($prevBookingsSum + $prevServicesSum) - $prevPaymentsSum);
+        }
 
         // Fetch current cycle items
         $bookings = \DB::table('uc_bookings')
@@ -190,6 +192,23 @@ class UcInvoiceController extends Controller
             ->limit(5)
             ->get();
 
+        $savedAmount = (float)$invoice->amount;
+        $savedBalance = (float)$invoice->balance;
+        $cycleBookingsSum = (float)$bookings->sum('car_price');
+        $cycleServicesSum = (float)$services->sum('base_price');
+        $cyclePaymentsSum = (float)$payments->sum('amount');
+        $cycleSubtotal = $cycleBookingsSum + $cycleServicesSum;
+        $cycleNet = max(0, $cycleSubtotal - $cyclePaymentsSum);
+
+        // If saved amount matches cycle subtotal (or net), or saved amount is 0 with no bookings, prevBalance is 0
+        if ($savedAmount == 0 || abs($savedAmount - $cycleSubtotal) < 1.0 || abs($savedAmount - $cycleNet) < 1.0) {
+            $prevBalance = 0.0;
+            $totalBalanceDue = $savedBalance > 0 ? $savedBalance : $cycleNet;
+        } else {
+            $prevBalance = $rawPrevBalance;
+            $totalBalanceDue = $savedBalance > 0 ? $savedBalance : (float)($prevBalance + $cycleSubtotal - $cyclePaymentsSum);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -197,13 +216,13 @@ class UcInvoiceController extends Controller
                 'breakdown' => [
                     'prev_balance' => (float)$prevBalance,
                     'bookings' => $bookings,
-                    'bookings_sum' => (float)$bookings->sum('car_price'),
+                    'bookings_sum' => $cycleBookingsSum,
                     'services' => $services,
-                    'services_sum' => (float)$services->sum('base_price'),
+                    'services_sum' => $cycleServicesSum,
                     'payments' => $payments,
-                    'payments_sum' => (float)$payments->sum('amount'),
-                    'cycle_subtotal' => (float)($bookings->sum('car_price') + $services->sum('base_price')),
-                    'total_balance_due' => (float)($prevBalance + ($bookings->sum('car_price') + $services->sum('base_price')) - $payments->sum('amount')),
+                    'payments_sum' => $cyclePaymentsSum,
+                    'cycle_subtotal' => $cycleSubtotal,
+                    'total_balance_due' => $totalBalanceDue,
                     'activities' => $activities,
                 ]
             ]
@@ -234,29 +253,34 @@ class UcInvoiceController extends Controller
         $startDate = $request->get('start_date');
         $endDate = $request->get('end_date');
         $type = $request->get('type');
+        $includePrevBalance = filter_var($request->get('include_previous_balance', false), FILTER_VALIDATE_BOOLEAN);
 
         // Fetch customer IDs belonging to this company name
         $customerIds = \App\Models\UmrahCab\UcCustomer::where('company', $company)->pluck('id');
 
-        // 1. Calculate Previous Balance (all items < start_date)
-        $prevBookingsSum = \DB::table('uc_bookings')
-            ->whereIn('customer_id', $customerIds)
-            ->where('date', '<', $startDate)
-            ->where('status', '!=', 'Cancelled')
-            ->sum('car_price');
+        $rawPrevBalance = 0.0;
+        if ($customerIds->isNotEmpty()) {
+            $prevBookingsSum = \DB::table('uc_bookings')
+                ->whereIn('customer_id', $customerIds)
+                ->where('date', '<', $startDate)
+                ->where('status', '!=', 'Cancelled')
+                ->sum('car_price');
 
-        $prevServicesSum = \DB::table('uc_services')
-            ->whereIn('customer_id', $customerIds)
-            ->where('date', '<', $startDate)
-            ->where('status', '!=', 'Cancelled')
-            ->sum('base_price');
+            $prevServicesSum = \DB::table('uc_services')
+                ->whereIn('customer_id', $customerIds)
+                ->where('date', '<', $startDate)
+                ->where('status', '!=', 'Cancelled')
+                ->sum('base_price');
 
-        $prevPaymentsSum = \DB::table('uc_payments')
-            ->where('company', $company)
-            ->where('date', '<', $startDate)
-            ->sum('amount');
+            $prevPaymentsSum = \DB::table('uc_payments')
+                ->where('company', $company)
+                ->where('date', '<', $startDate)
+                ->sum('amount');
 
-        $prevBalance = ($prevBookingsSum + $prevServicesSum) - $prevPaymentsSum;
+            $rawPrevBalance = (float)(($prevBookingsSum + $prevServicesSum) - $prevPaymentsSum);
+        }
+
+        $prevBalance = $includePrevBalance ? $rawPrevBalance : 0.0;
 
         // 2. Fetch Current Cycle Bookings
         $cycleBookings = \DB::table('uc_bookings')
@@ -266,7 +290,7 @@ class UcInvoiceController extends Controller
             ->select('id', 'date', 'booking_code', 'pickup', 'destination', 'car_price', 'status')
             ->get();
 
-        $cycleBookingsSum = $cycleBookings->sum('car_price');
+        $cycleBookingsSum = (float)$cycleBookings->sum('car_price');
 
         // 3. Fetch Current Cycle Services
         $cycleServices = \DB::table('uc_services')
@@ -276,7 +300,7 @@ class UcInvoiceController extends Controller
             ->select('id', 'date', 'custom_id as service_code', 'name', 'type', 'base_price', 'status')
             ->get();
 
-        $cycleServicesSum = $cycleServices->sum('base_price');
+        $cycleServicesSum = (float)$cycleServices->sum('base_price');
 
         // 4. Fetch Current Cycle Payments
         $cyclePayments = \DB::table('uc_payments')
@@ -285,7 +309,7 @@ class UcInvoiceController extends Controller
             ->select('id', 'date', 'amount', 'method', 'status')
             ->get();
 
-        $cyclePaymentsSum = $cyclePayments->sum('amount');
+        $cyclePaymentsSum = (float)$cyclePayments->sum('amount');
 
         // 5. Audit Trail/Activity History
         $activities = \DB::table('uc_audits')
@@ -296,7 +320,9 @@ class UcInvoiceController extends Controller
             ->get();
 
         $cycleSubtotal = $cycleBookingsSum + $cycleServicesSum;
-        $totalBalanceDue = $prevBalance + $cycleSubtotal - $cyclePaymentsSum;
+        $totalBalanceDue = $includePrevBalance 
+            ? (float)($prevBalance + $cycleSubtotal - $cyclePaymentsSum)
+            : (float)max(0, $cycleSubtotal - $cyclePaymentsSum);
 
         return response()->json([
             'success' => true,
@@ -305,13 +331,15 @@ class UcInvoiceController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'type' => $type,
+                'include_previous_balance' => $includePrevBalance,
                 'prev_balance' => (float)$prevBalance,
+                'raw_prev_balance' => (float)$rawPrevBalance,
                 'bookings' => $cycleBookings,
-                'bookings_sum' => (float)$cycleBookingsSum,
+                'bookings_sum' => $cycleBookingsSum,
                 'services' => $cycleServices,
-                'services_sum' => (float)$cycleServicesSum,
+                'services_sum' => $cycleServicesSum,
                 'payments' => $cyclePayments,
-                'payments_sum' => (float)$cyclePaymentsSum,
+                'payments_sum' => $cyclePaymentsSum,
                 'cycle_subtotal' => (float)$cycleSubtotal,
                 'total_balance_due' => (float)$totalBalanceDue,
                 'activities' => $activities,

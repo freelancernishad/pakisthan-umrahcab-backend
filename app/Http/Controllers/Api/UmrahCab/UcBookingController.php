@@ -565,9 +565,8 @@ class UcBookingController extends Controller
         $results = [];
 
         // 1. Search UcBooking
-        $bookings = UcBooking::with(['customer', 'driver', 'vehicle'])
+        $bookings = UcBooking::with(['customer', 'driver'])
             ->where('booking_code', $code)
-            ->orWhere('custom_id', $code)
             ->orWhere('id', $code)
             ->orWhere('full_name', 'like', "%{$code}%")
             ->orWhere('whatsapp', 'like', "%{$code}%")

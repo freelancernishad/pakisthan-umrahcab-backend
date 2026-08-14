@@ -14,6 +14,8 @@ class UcPriceList extends Model
     protected $fillable = [
         'route',
         'group_name',
+        'pickup_id',
+        'destination_id',
         'sedan_price',
         'sedan_dates',
         'suv_price',

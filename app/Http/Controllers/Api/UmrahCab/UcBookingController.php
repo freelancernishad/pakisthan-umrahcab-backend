@@ -562,15 +562,42 @@ class UcBookingController extends Controller
             return response()->json([]);
         }
 
+        // Parse ID from HCB-10001 or UCB-10001, or just 10001
+        $extractedId = null;
+        if (preg_match('/^(?:HCB|UCB)-(\d+)$/i', $code, $matches)) {
+            $num = (int)$matches[1];
+            $extractedId = $num > 10000 ? $num - 10000 : $num;
+        } elseif (is_numeric($code)) {
+            $num = (int)$code;
+            if ($num > 10000) {
+                $extractedId = $num - 10000;
+            }
+        }
+
+        // Clean digits for WhatsApp lookup (e.g. +923001234567 -> 923001234567)
+        $digits = preg_replace('/[^0-9]/', '', $code);
+
         $results = [];
 
         // 1. Search UcBooking
-        $bookings = UcBooking::with(['customer', 'driver'])
-            ->where('booking_code', $code)
-            ->orWhere('id', $code)
-            ->orWhere('full_name', 'like', "%{$code}%")
-            ->orWhere('whatsapp', 'like', "%{$code}%")
-            ->get();
+        $bookingQuery = UcBooking::with(['customer', 'driver'])
+            ->where('booking_code', $code);
+            
+        if ($extractedId) {
+            $bookingQuery->orWhere('id', $extractedId);
+        } else {
+            $bookingQuery->orWhere('id', $code);
+        }
+
+        $bookingQuery->orWhere('full_name', 'like', "%{$code}%");
+
+        if (!empty($digits)) {
+            $bookingQuery->orWhere('whatsapp', 'like', "%{$digits}%");
+        } else {
+            $bookingQuery->orWhere('whatsapp', 'like', "%{$code}%");
+        }
+
+        $bookings = $bookingQuery->get();
 
         foreach ($bookings as $b) {
             $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
@@ -589,15 +616,21 @@ class UcBookingController extends Controller
         }
 
         // 2. Search UcIndividualOrder
-        $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+        $orderQuery = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
             ->where('order_code', $code)
             ->orWhere('full_name', 'like', "%{$code}%")
-            ->orWhere('whatsapp', 'like', "%{$code}%")
             ->orWhere('email', 'like', "%{$code}%")
             ->orWhereHas('invoice', function($q) use ($code) {
                 $q->where('invoice_code', $code);
-            })
-            ->get();
+            });
+
+        if (!empty($digits)) {
+            $orderQuery->orWhere('whatsapp', 'like', "%{$digits}%");
+        } else {
+            $orderQuery->orWhere('whatsapp', 'like', "%{$code}%");
+        }
+
+        $orders = $orderQuery->get();
 
         foreach ($orders as $ord) {
             $results[] = [

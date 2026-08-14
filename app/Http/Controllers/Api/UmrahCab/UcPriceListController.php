@@ -163,6 +163,8 @@ class UcPriceListController extends Controller
         $validated = $request->validate([
             'route' => 'required|string|unique:uc_price_lists,route,NULL,id,group_name,' . $groupName,
             'group_name' => 'nullable|string',
+            'pickup_id' => 'nullable|integer|exists:uc_locations,id',
+            'destination_id' => 'nullable|integer|exists:uc_locations,id',
             'sedan_price' => 'nullable|numeric',
             'sedan_dates' => 'nullable|string',
             'suv_price' => 'nullable|numeric',
@@ -173,6 +175,43 @@ class UcPriceListController extends Controller
             'coach_dates' => 'nullable|string',
             'custom_prices' => 'nullable|array',
         ]);
+
+        // Auto-resolve pickup_id / destination_id from route if not provided
+        if (empty($validated['pickup_id']) || empty($validated['destination_id'])) {
+            $parts = preg_split('/\s+to\s+/i', $validated['route']);
+            if (count($parts) === 2) {
+                $pickupName = trim($parts[0]);
+                $destName = trim($parts[1]);
+
+                $cleanName = function($name) {
+                    $n = strtolower($name);
+                    $n = str_replace('jaddah', 'jeddah', $n);
+                    $n = str_replace('madina', 'madinah', $n);
+                    if (strpos($n, 'madinahh') !== false) {
+                        $n = str_replace('madinahh', 'madinah', $n);
+                    }
+                    return trim($n);
+                };
+
+                $pClean = $cleanName($pickupName);
+                $dClean = $cleanName($destName);
+
+                if (empty($validated['pickup_id'])) {
+                    $pLoc = \App\Models\UmrahCab\UcLocation::where('name', $pickupName)
+                        ->orWhere('name', 'like', "%{$pickupName}%")
+                        ->orWhere('name', 'like', "%{$pClean}%")
+                        ->first();
+                    if ($pLoc) $validated['pickup_id'] = $pLoc->id;
+                }
+                if (empty($validated['destination_id'])) {
+                    $dLoc = \App\Models\UmrahCab\UcLocation::where('name', $destName)
+                        ->orWhere('name', 'like', "%{$destName}%")
+                        ->orWhere('name', 'like', "%{$dClean}%")
+                        ->first();
+                    if ($dLoc) $validated['destination_id'] = $dLoc->id;
+                }
+            }
+        }
 
         $priceList = UcPriceList::create($validated);
 
@@ -194,9 +233,13 @@ class UcPriceListController extends Controller
         ]);
     }
 
-    public function locations()
+    public function locations(Request $request)
     {
-        $locations = UcLocation::orderBy('name', 'asc')->pluck('name');
+        if ($request->query('detailed') === 'true') {
+            $locations = \App\Models\UmrahCab\UcLocation::orderBy('name', 'asc')->get(['id', 'name', 'type']);
+            return response()->json($locations);
+        }
+        $locations = \App\Models\UmrahCab\UcLocation::orderBy('name', 'asc')->pluck('name');
         return response()->json($locations);
     }
 

@@ -621,20 +621,33 @@ class UcBookingController extends Controller
 
         // 2. Check exact match for HCB- or UCB- booking codes
         if (preg_match('/^(?:HCB|UCB)-?\d+$/i', $code)) {
-            $extractedId = null;
-            if (preg_match('/^(?:HCB|UCB)-(\d+)$/i', $code, $m)) {
-                $num = (int)$m[1];
-                $extractedId = $num > 10000 ? $num - 10000 : $num;
-            }
+            $hcbCode = preg_replace('/^UCB-/i', 'HCB-', $code);
+            $ucbCode = preg_replace('/^HCB-/i', 'UCB-', $code);
 
+            // First: Search exact booking_code match
             $bookings = UcBooking::with(['customer', 'driver'])
                 ->where('booking_code', $code)
-                ->orWhere('booking_code', preg_replace('/^HCB-/i', 'UCB-', $code))
-                ->orWhere('booking_code', preg_replace('/^UCB-/i', 'HCB-', $code))
-                ->when($extractedId, function($q) use ($extractedId) {
-                    $q->orWhere('id', $extractedId);
-                })
+                ->orWhere('booking_code', $hcbCode)
+                ->orWhere('booking_code', $ucbCode)
                 ->get();
+
+            // Fallback: Check numeric ID match ONLY if booking_code is null/empty or matches
+            if ($bookings->isEmpty() && preg_match('/^(?:HCB|UCB)-(\d+)$/i', $code, $m)) {
+                $num = (int)$m[1];
+                $possibleId = $num > 10000 ? $num - 10000 : $num;
+                $bookings = UcBooking::with(['customer', 'driver'])
+                    ->where(function($q) use ($num, $possibleId) {
+                        $q->where('id', $num)->orWhere('id', $possibleId);
+                    })
+                    ->where(function($q) use ($code, $hcbCode, $ucbCode) {
+                        $q->whereNull('booking_code')
+                          ->orWhere('booking_code', '')
+                          ->orWhere('booking_code', $code)
+                          ->orWhere('booking_code', $hcbCode)
+                          ->orWhere('booking_code', $ucbCode);
+                    })
+                    ->get();
+            }
 
             foreach ($bookings as $b) {
                 $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
@@ -657,17 +670,31 @@ class UcBookingController extends Controller
             }
         }
 
-        // 3. Search exact numeric ID (e.g. 10005 -> ID 5 or HCB-10005)
+        // 3. Search exact numeric ID (e.g. 10004 -> HCB-10004 or ID 10004)
         if (is_numeric($code)) {
             $num = (int)$code;
             $possibleId = $num > 10000 ? $num - 10000 : $num;
 
+            // First: Search exact booking_code match
             $bookings = UcBooking::with(['customer', 'driver'])
-                ->where('id', $num)
-                ->orWhere('id', $possibleId)
-                ->orWhere('booking_code', 'HCB-' . $num)
+                ->where('booking_code', 'HCB-' . $num)
                 ->orWhere('booking_code', 'UCB-' . $num)
                 ->get();
+
+            // Fallback: Check numeric ID match ONLY if booking_code is null/empty or matches
+            if ($bookings->isEmpty()) {
+                $bookings = UcBooking::with(['customer', 'driver'])
+                    ->where(function($q) use ($num, $possibleId) {
+                        $q->where('id', $num)->orWhere('id', $possibleId);
+                    })
+                    ->where(function($q) use ($num) {
+                        $q->whereNull('booking_code')
+                          ->orWhere('booking_code', '')
+                          ->orWhere('booking_code', 'HCB-' . $num)
+                          ->orWhere('booking_code', 'UCB-' . $num);
+                    })
+                    ->get();
+            }
 
             foreach ($bookings as $b) {
                 $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));

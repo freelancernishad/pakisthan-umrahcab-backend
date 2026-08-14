@@ -565,8 +565,8 @@ class UcBookingController extends Controller
         $upperCode = strtoupper($code);
         $results = [];
 
-        // 1. Check exact match for UCI-, UCO-, or INV- invoice & individual order codes
-        if (str_starts_with($upperCode, 'UCI-') || str_starts_with($upperCode, 'UCO-') || str_starts_with($upperCode, 'INV-')) {
+        // 1. Check exact match for WCB-, UCI-, UCO-, or INV- invoice & individual order codes
+        if (str_starts_with($upperCode, 'WCB-') || str_starts_with($upperCode, 'UCI-') || str_starts_with($upperCode, 'UCO-') || str_starts_with($upperCode, 'INV-')) {
             $invoices = \App\Models\UmrahCab\UcInvoice::with('individual_order')
                 ->where('invoice_code', $code)
                 ->orWhere('invoice_code', $upperCode)
@@ -670,10 +670,40 @@ class UcBookingController extends Controller
             }
         }
 
-        // 3. Search exact numeric ID (e.g. 10004 -> HCB-10004 or ID 10004)
+        // 3. Search exact numeric ID (e.g. 5000 -> WCB-5000 or HCB-10004)
         if (is_numeric($code)) {
             $num = (int)$code;
-            $possibleId = $num > 10000 ? $num - 10000 : $num;
+            $possibleId = $num > 10000 ? $num - 10000 : ($num >= 5000 ? $num - 5000 : $num);
+
+            if ($num >= 5000) {
+                $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+                    ->where('order_code', 'WCB-' . $num)
+                    ->orWhere('order_code', 'UCO-' . $num)
+                    ->orWhereHas('invoice', function($q) use ($num) {
+                        $q->where('invoice_code', 'WCB-' . $num)->orWhere('invoice_code', 'UCI-' . $num);
+                    })
+                    ->get();
+
+                foreach ($orders as $ord) {
+                    $invCode = $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code;
+                    $results[] = [
+                        'id' => $invCode,
+                        'booking_code' => $invCode,
+                        'pickup' => $ord->pickup,
+                        'destination' => $ord->destination,
+                        'date' => $ord->date,
+                        'time' => $ord->time,
+                        'car_type' => $ord->car_type,
+                        'car_price' => $ord->car_price,
+                        'full_name' => $ord->full_name,
+                        'status' => $ord->status ?: 'Pending'
+                    ];
+                }
+
+                if (!empty($results)) {
+                    return response()->json($results);
+                }
+            }
 
             // First: Search exact booking_code match
             $bookings = UcBooking::with(['customer', 'driver'])

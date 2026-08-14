@@ -51,10 +51,23 @@ class UcIndividualOrderController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated) {
-            // Generate order code
-            $orderCode = 'UCO-' . strtoupper(Str::random(8));
+            // Generate order code starting from WCB-5000
+            $lastNum = 4999;
+            $latestWcb = UcIndividualOrder::where('order_code', 'like', 'WCB-%')->orderBy('id', 'desc')->first();
+            if ($latestWcb && preg_match('/^WCB-(\d+)$/i', $latestWcb->order_code, $m)) {
+                $lastNum = max($lastNum, (int)$m[1]);
+            } else {
+                $lastOrder = UcIndividualOrder::orderBy('id', 'desc')->first();
+                if ($lastOrder) {
+                    $lastNum = 4999 + $lastOrder->id;
+                }
+            }
+
+            $nextNum = $lastNum + 1;
+            $orderCode = 'WCB-' . $nextNum;
             while (UcIndividualOrder::where('order_code', $orderCode)->exists()) {
-                $orderCode = 'UCO-' . strtoupper(Str::random(8));
+                $nextNum++;
+                $orderCode = 'WCB-' . $nextNum;
             }
 
             // Create Order
@@ -64,10 +77,10 @@ class UcIndividualOrderController extends Controller
                 'payment_status' => 'Pending'
             ]));
 
-            // Generate invoice code
-            $invoiceCode = 'UCI-' . strtoupper(Str::random(8));
+            // Generate invoice code matching order code
+            $invoiceCode = $orderCode;
             while (UcInvoice::where('invoice_code', $invoiceCode)->exists()) {
-                $invoiceCode = 'UCI-' . strtoupper(Str::random(8));
+                $invoiceCode = 'WCB-' . $nextNum . '-' . rand(10, 99);
             }
 
             // Create linked Invoice

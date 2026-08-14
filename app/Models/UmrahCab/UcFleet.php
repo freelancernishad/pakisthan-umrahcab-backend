@@ -16,7 +16,8 @@ class UcFleet extends Model
         'count',
         'active',
         'capacity',
-        'luggage'
+        'luggage',
+        'image'
     ];
 
     protected $casts = [

@@ -562,96 +562,16 @@ class UcBookingController extends Controller
             return response()->json([]);
         }
 
-        // Parse ID from HCB-10001 or UCB-10001, or just 10001
-        $extractedId = null;
-        if (preg_match('/^(?:HCB|UCB)-(\d+)$/i', $code, $matches)) {
-            $num = (int)$matches[1];
-            $extractedId = $num > 10000 ? $num - 10000 : $num;
-        } elseif (is_numeric($code)) {
-            $num = (int)$code;
-            if ($num > 10000) {
-                $extractedId = $num - 10000;
-            }
-        }
-
-        // Clean digits for WhatsApp lookup (e.g. +923001234567 -> 923001234567)
-        $digits = preg_replace('/[^0-9]/', '', $code);
-
+        $upperCode = strtoupper($code);
         $results = [];
 
-        // 1. Search UcBooking
-        $bookingQuery = UcBooking::with(['customer', 'driver'])
-            ->where('booking_code', $code);
-            
-        if ($extractedId) {
-            $bookingQuery->orWhere('id', $extractedId);
-        } else {
-            $bookingQuery->orWhere('id', $code);
-        }
-
-        $bookingQuery->orWhere('full_name', 'like', "%{$code}%");
-
-        if (!empty($digits)) {
-            $bookingQuery->orWhere('whatsapp', 'like', "%{$digits}%");
-        } else {
-            $bookingQuery->orWhere('whatsapp', 'like', "%{$code}%");
-        }
-
-        $bookings = $bookingQuery->get();
-
-        foreach ($bookings as $b) {
-            $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
-            $results[] = [
-                'id' => $bCode,
-                'booking_code' => $bCode,
-                'pickup' => $b->pickup,
-                'destination' => $b->destination,
-                'date' => $b->date,
-                'time' => $b->time,
-                'car_type' => $b->car_type,
-                'car_price' => $b->car_price,
-                'full_name' => $b->full_name,
-                'status' => $b->status ?: 'Active'
-            ];
-        }
-
-        // 2. Search UcIndividualOrder
-        $orderQuery = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
-            ->where('order_code', $code)
-            ->orWhere('full_name', 'like', "%{$code}%")
-            ->orWhere('email', 'like', "%{$code}%")
-            ->orWhereHas('invoice', function($q) use ($code) {
-                $q->where('invoice_code', $code);
-            });
-
-        if (!empty($digits)) {
-            $orderQuery->orWhere('whatsapp', 'like', "%{$digits}%");
-        } else {
-            $orderQuery->orWhere('whatsapp', 'like', "%{$code}%");
-        }
-
-        $orders = $orderQuery->get();
-
-        foreach ($orders as $ord) {
-            $results[] = [
-                'id' => $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code,
-                'booking_code' => $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code,
-                'pickup' => $ord->pickup,
-                'destination' => $ord->destination,
-                'date' => $ord->date,
-                'time' => $ord->time,
-                'car_type' => $ord->car_type,
-                'car_price' => $ord->car_price,
-                'full_name' => $ord->full_name,
-                'status' => $ord->status ?: 'Pending'
-            ];
-        }
-
-        // 3. Search UcInvoice by invoice_code
-        if (empty($results)) {
+        // 1. Check exact match for UCI-, UCO-, or INV- invoice & individual order codes
+        if (str_starts_with($upperCode, 'UCI-') || str_starts_with($upperCode, 'UCO-') || str_starts_with($upperCode, 'INV-')) {
             $invoices = \App\Models\UmrahCab\UcInvoice::with('individual_order')
                 ->where('invoice_code', $code)
+                ->orWhere('invoice_code', $upperCode)
                 ->get();
+
             foreach ($invoices as $inv) {
                 $ord = $inv->individual_order;
                 $results[] = [
@@ -667,8 +587,206 @@ class UcBookingController extends Controller
                     'status' => $inv->status
                 ];
             }
+
+            $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+                ->where('order_code', $code)
+                ->orWhere('order_code', $upperCode)
+                ->orWhereHas('invoice', function($q) use ($code, $upperCode) {
+                    $q->where('invoice_code', $code)->orWhere('invoice_code', $upperCode);
+                })
+                ->get();
+
+            foreach ($orders as $ord) {
+                $invCode = $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code;
+                if (!collect($results)->pluck('id')->contains($invCode)) {
+                    $results[] = [
+                        'id' => $invCode,
+                        'booking_code' => $invCode,
+                        'pickup' => $ord->pickup,
+                        'destination' => $ord->destination,
+                        'date' => $ord->date,
+                        'time' => $ord->time,
+                        'car_type' => $ord->car_type,
+                        'car_price' => $ord->car_price,
+                        'full_name' => $ord->full_name,
+                        'status' => $ord->status ?: 'Pending'
+                    ];
+                }
+            }
+
+            if (!empty($results)) {
+                return response()->json($results);
+            }
+        }
+
+        // 2. Check exact match for HCB- or UCB- booking codes
+        if (preg_match('/^(?:HCB|UCB)-?\d+$/i', $code)) {
+            $extractedId = null;
+            if (preg_match('/^(?:HCB|UCB)-(\d+)$/i', $code, $m)) {
+                $num = (int)$m[1];
+                $extractedId = $num > 10000 ? $num - 10000 : $num;
+            }
+
+            $bookings = UcBooking::with(['customer', 'driver'])
+                ->where('booking_code', $code)
+                ->orWhere('booking_code', preg_replace('/^HCB-/i', 'UCB-', $code))
+                ->orWhere('booking_code', preg_replace('/^UCB-/i', 'HCB-', $code))
+                ->when($extractedId, function($q) use ($extractedId) {
+                    $q->orWhere('id', $extractedId);
+                })
+                ->get();
+
+            foreach ($bookings as $b) {
+                $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
+                $results[] = [
+                    'id' => $bCode,
+                    'booking_code' => $bCode,
+                    'pickup' => $b->pickup,
+                    'destination' => $b->destination,
+                    'date' => $b->date,
+                    'time' => $b->time,
+                    'car_type' => $b->car_type,
+                    'car_price' => $b->car_price,
+                    'full_name' => $b->full_name,
+                    'status' => $b->status ?: 'Active'
+                ];
+            }
+
+            if (!empty($results)) {
+                return response()->json($results);
+            }
+        }
+
+        // 3. Search exact numeric ID (e.g. 10005 -> ID 5 or HCB-10005)
+        if (is_numeric($code)) {
+            $num = (int)$code;
+            $possibleId = $num > 10000 ? $num - 10000 : $num;
+
+            $bookings = UcBooking::with(['customer', 'driver'])
+                ->where('id', $num)
+                ->orWhere('id', $possibleId)
+                ->orWhere('booking_code', 'HCB-' . $num)
+                ->orWhere('booking_code', 'UCB-' . $num)
+                ->get();
+
+            foreach ($bookings as $b) {
+                $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
+                $results[] = [
+                    'id' => $bCode,
+                    'booking_code' => $bCode,
+                    'pickup' => $b->pickup,
+                    'destination' => $b->destination,
+                    'date' => $b->date,
+                    'time' => $b->time,
+                    'car_type' => $b->car_type,
+                    'car_price' => $b->car_price,
+                    'full_name' => $b->full_name,
+                    'status' => $b->status ?: 'Active'
+                ];
+            }
+
+            if (!empty($results)) {
+                return response()->json($results);
+            }
+        }
+
+        // 4. Phone number search (Require at least 7 digits to prevent short string false positives)
+        $digits = preg_replace('/[^0-9]/', '', $code);
+        if (strlen($digits) >= 7) {
+            $bookings = UcBooking::with(['customer', 'driver'])
+                ->where('whatsapp', 'like', "%{$digits}%")
+                ->get();
+
+            foreach ($bookings as $b) {
+                $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
+                $results[] = [
+                    'id' => $bCode,
+                    'booking_code' => $bCode,
+                    'pickup' => $b->pickup,
+                    'destination' => $b->destination,
+                    'date' => $b->date,
+                    'time' => $b->time,
+                    'car_type' => $b->car_type,
+                    'car_price' => $b->car_price,
+                    'full_name' => $b->full_name,
+                    'status' => $b->status ?: 'Active'
+                ];
+            }
+
+            $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+                ->where('whatsapp', 'like', "%{$digits}%")
+                ->get();
+
+            foreach ($orders as $ord) {
+                $invCode = $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code;
+                if (!collect($results)->pluck('id')->contains($invCode)) {
+                    $results[] = [
+                        'id' => $invCode,
+                        'booking_code' => $invCode,
+                        'pickup' => $ord->pickup,
+                        'destination' => $ord->destination,
+                        'date' => $ord->date,
+                        'time' => $ord->time,
+                        'car_type' => $ord->car_type,
+                        'car_price' => $ord->car_price,
+                        'full_name' => $ord->full_name,
+                        'status' => $ord->status ?: 'Pending'
+                    ];
+                }
+            }
+
+            if (!empty($results)) {
+                return response()->json($results);
+            }
+        }
+
+        // 5. Passenger Name search (Length >= 3)
+        if (strlen($code) >= 3) {
+            $bookings = UcBooking::with(['customer', 'driver'])
+                ->where('full_name', 'like', "%{$code}%")
+                ->get();
+
+            foreach ($bookings as $b) {
+                $bCode = $b->booking_code ? preg_replace('/^UCB-/i', 'HCB-', $b->booking_code) : ('HCB-' . (10000 + $b->id));
+                $results[] = [
+                    'id' => $bCode,
+                    'booking_code' => $bCode,
+                    'pickup' => $b->pickup,
+                    'destination' => $b->destination,
+                    'date' => $b->date,
+                    'time' => $b->time,
+                    'car_type' => $b->car_type,
+                    'car_price' => $b->car_price,
+                    'full_name' => $b->full_name,
+                    'status' => $b->status ?: 'Active'
+                ];
+            }
+
+            $orders = \App\Models\UmrahCab\UcIndividualOrder::with('invoice')
+                ->where('full_name', 'like', "%{$code}%")
+                ->orWhere('email', 'like', "%{$code}%")
+                ->get();
+
+            foreach ($orders as $ord) {
+                $invCode = $ord->invoice ? $ord->invoice->invoice_code : $ord->order_code;
+                if (!collect($results)->pluck('id')->contains($invCode)) {
+                    $results[] = [
+                        'id' => $invCode,
+                        'booking_code' => $invCode,
+                        'pickup' => $ord->pickup,
+                        'destination' => $ord->destination,
+                        'date' => $ord->date,
+                        'time' => $ord->time,
+                        'car_type' => $ord->car_type,
+                        'car_price' => $ord->car_price,
+                        'full_name' => $ord->full_name,
+                        'status' => $ord->status ?: 'Pending'
+                    ];
+                }
+            }
         }
 
         return response()->json($results);
     }
 }
+

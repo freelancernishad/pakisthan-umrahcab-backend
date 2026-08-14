@@ -104,7 +104,7 @@ class UmrahCabSeeder extends Seeder
             'car_price' => 300,
             'full_name' => 'Zubair Ahmad',
             'email' => 'zubair@example.com',
-            'whatsapp' => '+966567799616',
+            'whatsapp' => '+966501199008',
             'flight_no' => 'SV-812',
             'notes' => 'Awaiting flight confirmation from client.',
             'status' => 'Active Dispatch'
@@ -122,7 +122,7 @@ class UmrahCabSeeder extends Seeder
             'car_price' => 550,
             'full_name' => 'Abu Bakar',
             'email' => 'bakar@example.com',
-            'whatsapp' => '+966567799616',
+            'whatsapp' => '+966501199008',
             'flight_no' => 'SV-442',
             'notes' => 'Requires extra large boot space for 6 bags.',
             'status' => 'Confirmed Booking'
@@ -140,7 +140,7 @@ class UmrahCabSeeder extends Seeder
             'car_price' => 350,
             'full_name' => 'Abu Bakar',
             'email' => 'bakar@example.com',
-            'whatsapp' => '+966567799616',
+            'whatsapp' => '+966501199008',
             'flight_no' => 'SV-442',
             'notes' => 'Relational test multi-status active dispatch booking.',
             'status' => 'Active Dispatch'
@@ -158,7 +158,7 @@ class UmrahCabSeeder extends Seeder
             'car_price' => 600,
             'full_name' => 'Abu Bakar',
             'email' => 'bakar@example.com',
-            'whatsapp' => '+966567799616',
+            'whatsapp' => '+966501199008',
             'flight_no' => 'EK-201',
             'notes' => 'Relational test multi-status completed booking.',
             'status' => 'Completed'
@@ -176,7 +176,7 @@ class UmrahCabSeeder extends Seeder
             'car_price' => 200,
             'full_name' => 'Abu Bakar',
             'email' => 'bakar@example.com',
-            'whatsapp' => '+966567799616',
+            'whatsapp' => '+966501199008',
             'flight_no' => 'N/A',
             'notes' => 'Relational test multi-status cancelled booking.',
             'status' => 'Cancelled'

@@ -83,6 +83,10 @@ class UcWebsiteSettingController extends Controller
             }
         }
 
+        if (empty($formatted['contact_phone']) || $formatted['contact_phone'] === '+966567799616') {
+            $formatted['contact_phone'] = '+966501199008';
+        }
+
         return $formatted;
     }
 

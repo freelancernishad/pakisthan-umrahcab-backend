@@ -7,3 +7,4 @@ Route::get('/customers', [UcCustomerController::class, 'index']);
 Route::post('/customers', [UcCustomerController::class, 'store']);
 Route::put('/customers/{id}', [UcCustomerController::class, 'update']);
 Route::get('/customers/{id}', [UcCustomerController::class, 'show']);
+Route::delete('/customers/{id}', [UcCustomerController::class, 'destroy']);

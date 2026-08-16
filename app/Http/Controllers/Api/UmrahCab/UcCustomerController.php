@@ -171,4 +171,18 @@ class UcCustomerController extends Controller
 
         $unlinkedBookingsQuery->update(['customer_id' => $customer->id]);
     }
+
+    public function destroy($id)
+    {
+        $customer = UcCustomer::where('id', $id)
+            ->orWhere('custom_id', $id)
+            ->firstOrFail();
+
+        $customer->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Customer deleted successfully!'
+        ]);
+    }
 }

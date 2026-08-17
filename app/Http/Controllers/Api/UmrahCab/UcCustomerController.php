@@ -91,11 +91,7 @@ class UcCustomerController extends Controller
         $authUser = $request->user();
         $adminName = $authUser ? ($authUser->name ?: ($authUser->username ?: 'hebacab')) : 'hebacab';
         $validated['registered_by'] = $request->input('registered_by', "{$adminName} (Today)");
-        $validated['last_update'] = 'No edits';
-
         $customer = UcCustomer::create($validated);
-
-        $this->syncUnlinkedBookings($customer);
 
         return response()->json([
             'success' => true,
@@ -154,8 +150,6 @@ class UcCustomerController extends Controller
             ]);
         }
 
-        $this->syncUnlinkedBookings($customer);
-
         return response()->json([
             'success' => true,
             'message' => 'Customer updated successfully!',
@@ -168,8 +162,6 @@ class UcCustomerController extends Controller
         $customer = UcCustomer::where('id', $id)
             ->orWhere('custom_id', $id)
             ->firstOrFail();
-
-        $this->syncUnlinkedBookings($customer);
 
         // Fetch records linked via the foreign key customer_id
         $bookings = \App\Models\UmrahCab\UcBooking::where('customer_id', $customer->id)->get();
@@ -188,43 +180,7 @@ class UcCustomerController extends Controller
         ]);
     }
 
-    private function syncUnlinkedBookings(UcCustomer $customer)
-    {
-        $invalidPhones = ['+966501199008', '+966567799616', '+966501234567', '+966', 'N/A', '123456', '000000'];
-        
-        $validPhones = collect([$customer->phone, $customer->secondary_phone, $customer->alternative_phone])
-            ->map(fn($p) => trim($p ?? ''))
-            ->filter(fn($p) => !empty($p) && strlen($p) >= 8 && !in_array($p, $invalidPhones));
 
-        $email = trim($customer->email ?? '');
-        $validEmail = !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !str_contains($email, 'example.com') && !str_contains($email, 'test.com');
-
-        if ($validPhones->isEmpty() && !$validEmail) {
-            return;
-        }
-
-        $unlinkedBookingsQuery = \App\Models\UmrahCab\UcBooking::whereNull('customer_id');
-
-        $unlinkedBookingsQuery->where(function($q) use ($validPhones, $validEmail, $email) {
-            $first = true;
-
-            if ($validEmail) {
-                $q->where('email', 'like', $email);
-                $first = false;
-            }
-
-            foreach ($validPhones as $phone) {
-                if ($first) {
-                    $q->where('whatsapp', 'like', "%{$phone}%");
-                    $first = false;
-                } else {
-                    $q->orWhere('whatsapp', 'like', "%{$phone}%");
-                }
-            }
-        });
-
-        $unlinkedBookingsQuery->update(['customer_id' => $customer->id]);
-    }
 
     public function destroy($id)
     {

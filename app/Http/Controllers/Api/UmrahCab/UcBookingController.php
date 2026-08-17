@@ -29,6 +29,21 @@ class UcBookingController extends Controller
         return response()->json($query->get());
     }
 
+    private function normalizePhoneNumber(?string $phone): ?string
+    {
+        if (empty($phone)) return null;
+        $cleaned = trim($phone);
+        if (str_starts_with($cleaned, '00')) {
+            return '+' . substr($cleaned, 2);
+        }
+        if (!str_starts_with($cleaned, '+')) {
+            if (preg_match('/^(966|92|880|91|971|44|1)/', $cleaned)) {
+                return '+' . $cleaned;
+            }
+        }
+        return $cleaned;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -50,6 +65,10 @@ class UcBookingController extends Controller
             'received_amount' => 'nullable|numeric',
             'pending_amount' => 'nullable|numeric',
         ]);
+
+        if (!empty($validated['whatsapp'])) {
+            $validated['whatsapp'] = $this->normalizePhoneNumber($validated['whatsapp']);
+        }
 
         if (empty($validated['customer_id'])) {
             $validated['customer_id'] = $this->resolveCustomerId($validated);
@@ -227,6 +246,10 @@ class UcBookingController extends Controller
             'pending_amount' => 'nullable|numeric',
             'driver_trip_status' => 'nullable|string',
         ]);
+
+        if (!empty($validated['whatsapp'])) {
+            $validated['whatsapp'] = $this->normalizePhoneNumber($validated['whatsapp']);
+        }
 
         if (!array_key_exists('customer_id', $validated)) {
             if (isset($validated['full_name']) || isset($validated['email']) || isset($validated['whatsapp'])) {

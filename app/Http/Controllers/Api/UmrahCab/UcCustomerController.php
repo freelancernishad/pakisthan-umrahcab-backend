@@ -36,6 +36,21 @@ class UcCustomerController extends Controller
         return response()->json($query->paginate($perPage));
     }
 
+    private function normalizePhoneNumber(?string $phone): ?string
+    {
+        if (empty($phone)) return null;
+        $cleaned = trim($phone);
+        if (str_starts_with($cleaned, '00')) {
+            return '+' . substr($cleaned, 2);
+        }
+        if (!str_starts_with($cleaned, '+')) {
+            if (preg_match('/^(966|92|880|91|971|44|1)/', $cleaned)) {
+                return '+' . $cleaned;
+            }
+        }
+        return $cleaned;
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -51,8 +66,18 @@ class UcCustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = $this->normalizePhoneNumber($validated['phone']);
+        }
+        if (!empty($validated['secondary_phone'])) {
+            $validated['secondary_phone'] = $this->normalizePhoneNumber($validated['secondary_phone']);
+        }
+        if (!empty($validated['alternative_phone'])) {
+            $validated['alternative_phone'] = $this->normalizePhoneNumber($validated['alternative_phone']);
+        }
+
         if (empty($validated['contact'])) {
-            $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
+            $phones = collect([$validated['phone'] ?? null, $validated['secondary_phone'] ?? null, $validated['alternative_phone'] ?? null])->filter()->implode(' / ');
             $emailInfo = $request->email ? " | Email: {$request->email}" : "";
             $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
             $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
@@ -95,8 +120,18 @@ class UcCustomerController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        if (!empty($validated['phone'])) {
+            $validated['phone'] = $this->normalizePhoneNumber($validated['phone']);
+        }
+        if (!empty($validated['secondary_phone'])) {
+            $validated['secondary_phone'] = $this->normalizePhoneNumber($validated['secondary_phone']);
+        }
+        if (!empty($validated['alternative_phone'])) {
+            $validated['alternative_phone'] = $this->normalizePhoneNumber($validated['alternative_phone']);
+        }
+
         if (empty($validated['contact'])) {
-            $phones = collect([$request->phone, $request->secondary_phone, $request->alternative_phone])->filter()->implode(' / ');
+            $phones = collect([$validated['phone'] ?? null, $validated['secondary_phone'] ?? null, $validated['alternative_phone'] ?? null])->filter()->implode(' / ');
             $emailInfo = $request->email ? " | Email: {$request->email}" : "";
             $passportInfo = $request->passport_no ? " | Passport: {$request->passport_no}" : "";
             $hotelInfo = $request->hotel_info ? " | Hotel: {$request->hotel_info}" : "";
@@ -109,6 +144,15 @@ class UcCustomerController extends Controller
         $validated['last_update'] = $request->input('last_update', "{$adminName} (Edited Today)");
 
         $customer->update($validated);
+
+        // Sync updated customer phone and name to linked booking records
+        $primaryPhone = $customer->phone ?: ($customer->secondary_phone ?: $customer->alternative_phone);
+        if (!empty($primaryPhone)) {
+            \App\Models\UmrahCab\UcBooking::where('customer_id', $customer->id)->update([
+                'whatsapp' => $primaryPhone,
+                'full_name' => $customer->name,
+            ]);
+        }
 
         $this->syncUnlinkedBookings($customer);
 

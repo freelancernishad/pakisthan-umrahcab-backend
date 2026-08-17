@@ -144,12 +144,24 @@ class UcPriceListController extends Controller
         $dates = $validated['start_date'] . ' to ' . $validated['end_date'];
         $groupName = $validated['group_name'] ?? 'Standard';
 
-        UcPriceList::where('group_name', $groupName)->update([
-            'sedan_dates' => $dates,
-            'suv_dates' => $dates,
-            'van_dates' => $dates,
-            'coach_dates' => $dates,
-        ]);
+        $priceLists = UcPriceList::where('group_name', $groupName)->get();
+        foreach ($priceLists as $pl) {
+            $custom = $pl->custom_prices;
+            if (is_array($custom)) {
+                foreach ($custom as $vehicleName => &$details) {
+                    if (is_array($details)) {
+                        $details['from'] = $validated['start_date'];
+                        $details['to'] = $validated['end_date'];
+                    }
+                }
+                $pl->custom_prices = $custom;
+            }
+            $pl->sedan_dates = $dates;
+            $pl->suv_dates = $dates;
+            $pl->van_dates = $dates;
+            $pl->coach_dates = $dates;
+            $pl->save();
+        }
 
         return response()->json([
             'success' => true,

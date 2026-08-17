@@ -179,25 +179,34 @@ class UcPaymentController extends Controller
 
         // Handle Ledger Credit / Revocation
         if ($isNewCleared && !$isOldCleared) {
-            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
-            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
-            $newBalance = $lastBalance + $payment->amount;
+            // Ledger credit is ONLY added for actual deposit/loan approval requests (NOT for auto-generated loan due tracking records)
+            if (!$isDuePayment) {
+                // Prevent duplicate ledger entries for the same payment
+                $paymentRef = $payment->custom_id ?? ('PAY-' . $payment->id);
+                $existingLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)
+                    ->where('description', 'like', '%' . $paymentRef . '%')
+                    ->first();
 
-            $description = $isDuePayment 
-                ? 'Loan Due Payment Received (Credit Amount Paid): ' . ($payment->custom_id ?? 'PAY-'.$payment->id)
-                : ($isLoanMethod 
-                    ? 'Loan Credit Approved (Credit Amount Paid): ' . ($payment->custom_id ?? 'PAY-'.$payment->id) 
-                    : 'Payment Cleared: ' . ($payment->custom_id ?? 'PAY-'.$payment->id));
+                if (!$existingLedger) {
+                    $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+                    $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                    $newBalance = $lastBalance + $payment->amount;
 
-            \App\Models\UmrahCab\UcLedger::create([
-                'company' => $payment->company,
-                'custom_id' => 'LED-' . rand(1000, 9999),
-                'date' => date('Y-m-d'),
-                'description' => $description,
-                'debit' => 0,
-                'credit' => $payment->amount,
-                'balance' => $newBalance
-            ]);
+                    $description = $isLoanMethod 
+                        ? 'Loan Credit Approved (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')'
+                        : 'Payment Cleared (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')';
+
+                    \App\Models\UmrahCab\UcLedger::create([
+                        'company' => $payment->company,
+                        'custom_id' => 'LED-' . rand(1000, 9999),
+                        'date' => date('Y-m-d'),
+                        'description' => $description,
+                        'debit' => 0,
+                        'credit' => $payment->amount,
+                        'balance' => $newBalance
+                    ]);
+                }
+            }
         } elseif (!$isNewCleared && $isOldCleared) {
             // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
             if (!$isDuePayment) {

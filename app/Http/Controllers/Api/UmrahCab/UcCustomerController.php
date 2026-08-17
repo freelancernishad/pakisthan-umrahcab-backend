@@ -190,26 +190,36 @@ class UcCustomerController extends Controller
 
     private function syncUnlinkedBookings(UcCustomer $customer)
     {
+        $invalidPhones = ['+966501199008', '+966567799616', '+966501234567', '+966', 'N/A', '123456', '000000'];
+        
+        $validPhones = collect([$customer->phone, $customer->secondary_phone, $customer->alternative_phone])
+            ->map(fn($p) => trim($p ?? ''))
+            ->filter(fn($p) => !empty($p) && strlen($p) >= 8 && !in_array($p, $invalidPhones));
+
+        $email = trim($customer->email ?? '');
+        $validEmail = !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !str_contains($email, 'example.com') && !str_contains($email, 'test.com');
+
+        if ($validPhones->isEmpty() && !$validEmail) {
+            return;
+        }
+
         $unlinkedBookingsQuery = \App\Models\UmrahCab\UcBooking::whereNull('customer_id');
 
-        $unlinkedBookingsQuery->where(function($q) use ($customer) {
-            $q->where('full_name', 'like', trim($customer->name));
+        $unlinkedBookingsQuery->where(function($q) use ($validPhones, $validEmail, $email) {
+            $first = true;
 
-            if (!empty($customer->email)) {
-                $q->orWhere('email', 'like', '%' . trim($customer->email) . '%');
+            if ($validEmail) {
+                $q->where('email', 'like', $email);
+                $first = false;
             }
 
-            if (!empty($customer->phone)) {
-                $phone = trim($customer->phone);
-                $q->orWhere('whatsapp', 'like', "%{$phone}%");
-            }
-            if (!empty($customer->secondary_phone)) {
-                $phone = trim($customer->secondary_phone);
-                $q->orWhere('whatsapp', 'like', "%{$phone}%");
-            }
-            if (!empty($customer->alternative_phone)) {
-                $phone = trim($customer->alternative_phone);
-                $q->orWhere('whatsapp', 'like', "%{$phone}%");
+            foreach ($validPhones as $phone) {
+                if ($first) {
+                    $q->where('whatsapp', 'like', "%{$phone}%");
+                    $first = false;
+                } else {
+                    $q->orWhere('whatsapp', 'like', "%{$phone}%");
+                }
             }
         });
 

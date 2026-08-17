@@ -126,9 +126,8 @@ class UcPaymentController extends Controller
         if ($isNewCleared && !$isOldCleared) {
             if ($isLoanMethod && !$isDuePayment) {
                 // Admin is approving a LOAN / CREDIT request:
-                // Update payment amount to approved loan amount
                 $payment->amount = $approvedAmount;
-                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Loan Approved: " . $approvedAmount . " SAR]");
+                $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Loan Approved: SAR " . number_format($approvedAmount, 2) . "]");
 
                 // Create auto-generated Due Payment record so it displays under Payable Amount (Admin)
                 UcPayment::create([
@@ -140,14 +139,14 @@ class UcPaymentController extends Controller
                     'currency' => $payment->currency,
                     'status' => 'Pending',
                     'transaction_ref' => ($payment->custom_id ?? ('PAY-'.$payment->id)) . ' (Loan Due)',
-                    'proof_details' => 'Auto-generated loan due payable to Admin. (No additional ledger credit on approval)',
+                    'proof_details' => 'Auto-generated loan due payable to Admin for Loan Request ' . ($payment->custom_id ?? ('PAY-'.$payment->id)),
                     'proof_file' => $payment->proof_file
                 ]);
             } elseif ($isDuePayment) {
-                // Admin is approving/adjusting a DUE PAYMENT repayment (e.g. Agent paying off part/all of loan):
+                // Admin is approving/adjusting a DUE PAYMENT repayment:
                 if ($approvedAmount < $payment->amount && $approvedAmount > 0) {
                     $remainingDue = $payment->amount - $approvedAmount;
-                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Repayment Approved: " . $approvedAmount . " of " . $payment->amount . ", Remaining Due: " . $remainingDue . "]");
+                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Partial Loan Due Repayment Received: SAR " . number_format($approvedAmount, 2) . " of SAR " . number_format($payment->amount, 2) . ", Remaining Due: SAR " . number_format($remainingDue, 2) . "]");
                     $payment->amount = $approvedAmount;
 
                     // Create pending record for remaining due amount
@@ -160,15 +159,16 @@ class UcPaymentController extends Controller
                         'currency' => $payment->currency,
                         'status' => 'Pending',
                         'transaction_ref' => ($payment->transaction_ref ?? 'Due Payment'),
-                        'proof_details' => 'Auto-generated remaining due payable to Admin. (No additional ledger credit on approval)',
+                        'proof_details' => 'Auto-generated remaining due payable to Admin for Loan ' . ($payment->transaction_ref ?? ''),
                         'proof_file' => $payment->proof_file
                     ]);
+                } else {
+                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Loan Due Repayment Received (Full): SAR " . number_format($payment->amount, 2) . " for Loan " . ($payment->transaction_ref ?? '') . "]");
                 }
             } else {
                 // Normal Cash / Bank Transfer / Credit Card deposit approval:
-                // Simply set payment amount to approved received amount (no due payment created)
                 if ($approvedAmount > 0 && $approvedAmount != $payment->amount) {
-                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approved Received Amount: " . $approvedAmount . " of requested " . $payment->amount . "]");
+                    $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Approved Received Amount: SAR " . number_format($approvedAmount, 2) . " of requested SAR " . number_format($payment->amount, 2) . "]");
                     $payment->amount = $approvedAmount;
                 }
             }
@@ -179,35 +179,34 @@ class UcPaymentController extends Controller
 
         // Handle Ledger Credit / Revocation
         if ($isNewCleared && !$isOldCleared) {
-            // Ledger credit is ONLY added for actual deposit/loan approval requests (NOT for auto-generated loan due tracking records)
-            if (!$isDuePayment) {
-                // Prevent duplicate ledger entries for the same payment
-                $paymentRef = $payment->custom_id ?? ('PAY-' . $payment->id);
-                $existingLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)
-                    ->where('description', 'like', '%' . $paymentRef . '%')
-                    ->first();
+            // Prevent duplicate ledger entries for the same payment
+            $paymentRef = $payment->custom_id ?? ('PAY-' . $payment->id);
+            $existingLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)
+                ->where('description', 'like', '%' . $paymentRef . '%')
+                ->first();
 
-                if (!$existingLedger) {
-                    $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
-                    $lastBalance = $lastLedger ? $lastLedger->balance : 0;
-                    $newBalance = $lastBalance + $payment->amount;
+            if (!$existingLedger) {
+                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+                $newBalance = $lastBalance + $payment->amount;
 
-                    $description = $isLoanMethod 
+                $description = $isDuePayment
+                    ? 'Loan Due Repayment Received (Ref: ' . $paymentRef . ', Loan Ref: ' . ($payment->transaction_ref ?? 'Loan Due') . ', Amount Paid: SAR ' . number_format($payment->amount, 2) . ')'
+                    : ($isLoanMethod 
                         ? 'Loan Credit Approved (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')'
-                        : 'Payment Cleared (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')';
+                        : 'Payment Cleared (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')');
 
-                    \App\Models\UmrahCab\UcLedger::create([
-                        'company' => $payment->company,
-                        'custom_id' => 'LED-' . rand(1000, 9999),
-                        'date' => date('Y-m-d'),
-                        'description' => $description,
-                        'debit' => 0,
-                        'credit' => $payment->amount,
-                        'balance' => $newBalance
-                    ]);
-                }
+                \App\Models\UmrahCab\UcLedger::create([
+                    'company' => $payment->company,
+                    'custom_id' => 'LED-' . rand(1000, 9999),
+                    'date' => date('Y-m-d'),
+                    'description' => $description,
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                    'balance' => $newBalance
+                ]);
             }
-        } elseif (!$isNewCleared && $isOldCleared) {
+        } elseif (!$isOldCleared && !$isNewCleared) {
             // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
             if (!$isDuePayment) {
                 $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();

@@ -179,22 +179,25 @@ class UcPaymentController extends Controller
 
         // Handle Ledger Credit / Revocation
         if ($isNewCleared && !$isOldCleared) {
-            // Ledger credit is added ONLY for actual deposit requests (NOT for due payment repayments)
-            if (!$isDuePayment) {
-                $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
-                $lastBalance = $lastLedger ? $lastLedger->balance : 0;
-                $newBalance = $lastBalance + $payment->amount;
+            $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
+            $lastBalance = $lastLedger ? $lastLedger->balance : 0;
+            $newBalance = $lastBalance + $payment->amount;
 
-                \App\Models\UmrahCab\UcLedger::create([
-                    'company' => $payment->company,
-                    'custom_id' => 'LED-' . rand(1000, 9999),
-                    'date' => date('Y-m-d'),
-                    'description' => ($isLoanMethod ? 'Loan Balance Approved: ' : 'Payment Cleared: ') . ($payment->custom_id ?? 'PAY-'.$payment->id),
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                    'balance' => $newBalance
-                ]);
-            }
+            $description = $isDuePayment 
+                ? 'Loan Due Payment Received (Credit Amount Paid): ' . ($payment->custom_id ?? 'PAY-'.$payment->id)
+                : ($isLoanMethod 
+                    ? 'Loan Credit Approved (Credit Amount Paid): ' . ($payment->custom_id ?? 'PAY-'.$payment->id) 
+                    : 'Payment Cleared: ' . ($payment->custom_id ?? 'PAY-'.$payment->id));
+
+            \App\Models\UmrahCab\UcLedger::create([
+                'company' => $payment->company,
+                'custom_id' => 'LED-' . rand(1000, 9999),
+                'date' => date('Y-m-d'),
+                'description' => $description,
+                'debit' => 0,
+                'credit' => $payment->amount,
+                'balance' => $newBalance
+            ]);
         } elseif (!$isNewCleared && $isOldCleared) {
             // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
             if (!$isDuePayment) {

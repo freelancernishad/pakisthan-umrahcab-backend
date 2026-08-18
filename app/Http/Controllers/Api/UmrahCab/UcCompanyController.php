@@ -66,10 +66,25 @@ class UcCompanyController extends Controller
 
     public function update(Request $request, $id)
     {
-        $company = UcCompany::findOrFail($id);
+        $company = UcCompany::find($id);
+        if (!$company && ($request->filled('name') || $request->filled('company'))) {
+            $compName = trim($request->input('name') ?? $request->input('company'));
+            $company = UcCompany::where('name', $compName)->first();
+            if (!$company && !empty($compName)) {
+                $company = UcCompany::create([
+                    'name' => $compName,
+                    'statement_status' => $request->input('statement_status', 'Pending'),
+                    'remarks' => $request->input('remarks', ''),
+                ]);
+            }
+        }
+        if (!$company) {
+            $company = UcCompany::findOrFail($id);
+        }
+        $companyId = $company->id;
         $validated = $request->validate([
             'name' => 'sometimes|required|string',
-            'agent_username' => 'nullable|string|unique:uc_companies,agent_username,' . $id,
+            'agent_username' => 'nullable|string|unique:uc_companies,agent_username,' . $companyId,
             'agent_password' => 'nullable|string',
             'phone' => 'nullable|string',
             'email' => 'nullable|email',

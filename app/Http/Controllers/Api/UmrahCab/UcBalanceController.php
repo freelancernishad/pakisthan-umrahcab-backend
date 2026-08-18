@@ -244,8 +244,9 @@ class UcBalanceController extends Controller
             // Latest invoice details
             $lastInv = $compInvoices->sortByDesc('id')->first();
 
-            // Status: CLEARED only if no unpaid receivables and ledger balance <= 0
-            $status = ($recVW <= 0 && $recPW <= 0 && $unpaidCount == 0 && $ledgerBal <= 0) ? 'CLEARED' : 'UNPAID';
+            // Status: CLEARED if statement_status is 'Done' or if no unpaid receivables and ledger balance <= 0
+            $isStatementDone = (isset($comp->statement_status) && strcasecmp(trim($comp->statement_status), 'Done') === 0);
+            $status = ($isStatementDone || ($recVW <= 0 && $recPW <= 0 && $unpaidCount == 0 && $ledgerBal <= 0)) ? 'CLEARED' : 'UNPAID';
 
             return [
                 'id'               => $comp->id,

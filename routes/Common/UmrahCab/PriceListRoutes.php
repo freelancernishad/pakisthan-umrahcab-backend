@@ -16,6 +16,8 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
     });
 
     Route::middleware(AuthenticateAdmin::class)->group(function () {
+        Route::get('/price-list/hidden', [UcPriceListController::class, 'hiddenRoutes']);
+        Route::post('/price-list/restore', [UcPriceListController::class, 'restore']);
         Route::post('/price-list', [UcPriceListController::class, 'store']);
         Route::put('/price-list/{id}', [UcPriceListController::class, 'update']);
         Route::delete('/price-list/{id}', [UcPriceListController::class, 'destroy']);

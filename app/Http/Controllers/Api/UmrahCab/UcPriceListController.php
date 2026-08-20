@@ -250,6 +250,11 @@ class UcPriceListController extends Controller
                 ->first();
 
             if ($priceList) {
+                $customPrices = $priceList->custom_prices ?? [];
+                if (is_array($customPrices) && isset($customPrices['is_hidden'])) {
+                    unset($customPrices['is_hidden']);
+                }
+                $customData['custom_prices'] = array_merge($customPrices, $validated['custom_prices'] ?? []);
                 $priceList->update($customData);
             } else {
                 $priceList = UcPriceList::create($customData);
@@ -307,6 +312,53 @@ class UcPriceListController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Route package deleted successfully!'
+        ]);
+    }
+
+    public function hiddenRoutes(Request $request)
+    {
+        $groupName = $request->query('group_name', 'Standard');
+        if ($groupName === 'Standard') {
+            return response()->json([]);
+        }
+
+        $hidden = UcPriceList::where('group_name', $groupName)
+            ->get()
+            ->filter(function ($item) {
+                return isset($item->custom_prices['is_hidden']) && $item->custom_prices['is_hidden'];
+            })
+            ->values();
+
+        return response()->json($hidden);
+    }
+
+    public function restore(Request $request)
+    {
+        $validated = $request->validate([
+            'route' => 'required|string',
+            'group_name' => 'required|string'
+        ]);
+
+        $custom = UcPriceList::where('group_name', $validated['group_name'])
+            ->where('route', $validated['route'])
+            ->first();
+
+        if ($custom) {
+            $custom_prices = $custom->custom_prices ?? [];
+            if (is_array($custom_prices) && isset($custom_prices['is_hidden'])) {
+                unset($custom_prices['is_hidden']);
+            }
+            if (empty($custom_prices) || count($custom_prices) === 0) {
+                $custom->delete();
+            } else {
+                $custom->custom_prices = $custom_prices;
+                $custom->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Route '{$validated['route']}' restored to tier '{$validated['group_name']}' successfully!"
         ]);
     }
 

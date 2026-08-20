@@ -29,13 +29,21 @@ class UcPriceListController extends Controller
 
         if ($request->query('paginate') === 'false') {
             $standardRoutes = $query->get();
-            return response()->json($this->overlayCustomPrices($standardRoutes, $groupName));
+            $overlaid = $this->overlayCustomPrices($standardRoutes, $groupName);
+            $filtered = $overlaid->filter(function ($item) {
+                return !isset($item->custom_prices['is_hidden']) || !$item->custom_prices['is_hidden'];
+            })->values();
+            return response()->json($filtered);
         }
 
         $paginator = $query->paginate($perPage);
-        $paginator->getCollection()->transform(function ($stdRoute) use ($groupName) {
+        $transformedCollection = $paginator->getCollection()->map(function ($stdRoute) use ($groupName) {
             return $this->getOverlaidRoute($stdRoute, $groupName);
-        });
+        })->filter(function ($item) {
+            return !isset($item->custom_prices['is_hidden']) || !$item->custom_prices['is_hidden'];
+        })->values();
+
+        $paginator->setCollection($transformedCollection);
 
         return response()->json($paginator);
     }
@@ -173,7 +181,7 @@ class UcPriceListController extends Controller
     {
         $groupName = $request->input('group_name', 'Standard');
         $validated = $request->validate([
-            'route' => 'required|string|unique:uc_price_lists,route,NULL,id,group_name,' . $groupName,
+            'route' => 'required|string',
             'group_name' => 'nullable|string',
             'pickup_id' => 'nullable|integer|exists:uc_locations,id',
             'destination_id' => 'nullable|integer|exists:uc_locations,id',
@@ -225,7 +233,30 @@ class UcPriceListController extends Controller
             }
         }
 
-        $priceList = UcPriceList::create($validated);
+        // Ensure base Standard route entry exists so index() returns it in matrix query
+        $stdRoute = UcPriceList::where('group_name', 'Standard')
+            ->where('route', $validated['route'])
+            ->first();
+
+        if (!$stdRoute) {
+            $stdData = array_merge($validated, ['group_name' => 'Standard']);
+            $stdRoute = UcPriceList::create($stdData);
+        }
+
+        if ($groupName !== 'Standard') {
+            $customData = array_merge($validated, ['group_name' => $groupName]);
+            $priceList = UcPriceList::where('group_name', $groupName)
+                ->where('route', $validated['route'])
+                ->first();
+
+            if ($priceList) {
+                $priceList->update($customData);
+            } else {
+                $priceList = UcPriceList::create($customData);
+            }
+        } else {
+            $priceList = $stdRoute;
+        }
 
         return response()->json([
             'success' => true,
@@ -234,9 +265,43 @@ class UcPriceListController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $priceList = UcPriceList::findOrFail($id);
+        $groupName = $request->query('group_name', $priceList->group_name);
+
+        if ($groupName && $groupName !== 'Standard') {
+            $custom = UcPriceList::where('group_name', $groupName)
+                ->where('route', $priceList->route)
+                ->first();
+
+            if ($custom) {
+                $custom_prices = $custom->custom_prices ?? [];
+                if (!is_array($custom_prices)) $custom_prices = [];
+                $custom_prices['is_hidden'] = true;
+                $custom->custom_prices = $custom_prices;
+                $custom->save();
+            } else {
+                UcPriceList::create([
+                    'route' => $priceList->route,
+                    'group_name' => $groupName,
+                    'pickup_id' => $priceList->pickup_id,
+                    'destination_id' => $priceList->destination_id,
+                    'sedan_price' => $priceList->sedan_price,
+                    'suv_price' => $priceList->suv_price,
+                    'van_price' => $priceList->van_price,
+                    'coach_price' => $priceList->coach_price,
+                    'custom_prices' => ['is_hidden' => true]
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Route package removed from tier '{$groupName}' successfully!"
+            ]);
+        }
+
+        // Standard deletion removes the route globally across all groups
         UcPriceList::where('route', $priceList->route)->delete();
 
         return response()->json([

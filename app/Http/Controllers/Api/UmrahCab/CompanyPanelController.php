@@ -540,4 +540,54 @@ class CompanyPanelController extends Controller
             'message' => 'Document deleted successfully!'
         ]);
     }
+
+    public function uploadLogo(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'logo_path' => 'required|string',
+        ]);
+
+        $logoPath = $request->input('logo_path');
+        if (str_starts_with($logoPath, 'data:')) {
+            $ext = 'png';
+            if (preg_match('/^data:image\/([^;]+);base64,/i', $logoPath, $matches)) {
+                $rawMime = strtolower($matches[1]);
+                if (str_contains($rawMime, 'jpeg') || str_contains($rawMime, 'jpg')) {
+                    $ext = 'jpg';
+                } elseif (str_contains($rawMime, 'webp')) {
+                    $ext = 'webp';
+                } elseif (str_contains($rawMime, 'gif')) {
+                    $ext = 'gif';
+                } elseif (str_contains($rawMime, 'svg')) {
+                    $ext = 'svg';
+                }
+            }
+
+            $base64Data = substr($logoPath, strpos($logoPath, ',') + 1);
+            $data = base64_decode($base64Data);
+            if ($data !== false && !empty($data)) {
+                $fileName = 'logo_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                $uploadPath = public_path('uploads');
+                if (!file_exists($uploadPath)) {
+                    mkdir($uploadPath, 0777, true);
+                }
+                file_put_contents($uploadPath . '/' . $fileName, $data);
+                $logoPath = 'uploads/' . $fileName;
+            }
+        }
+
+        $company->logo_path = $logoPath;
+        $company->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company logo updated successfully!',
+            'company' => $company
+        ]);
+    }
 }

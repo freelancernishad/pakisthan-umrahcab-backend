@@ -26,8 +26,9 @@ Route::middleware([AttachJwtFromCookie::class])->group(function () {
         Route::get('chat', [UcChatController::class, 'getCompanyMessages']);
         Route::post('chat', [UcChatController::class, 'sendCompanyMessage']);
 
-        // Upload Document Route
+        // Upload Document & Logo Routes
         Route::post('upload-document', [CompanyPanelController::class, 'uploadDocument']);
+        Route::post('upload-logo', [CompanyPanelController::class, 'uploadLogo']);
 
         // Customer Document Management Routes
         Route::get('customer-documents', [CompanyPanelController::class, 'getDocuments']);

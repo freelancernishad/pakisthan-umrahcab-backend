@@ -87,6 +87,17 @@ class CompanyPanelController extends Controller
             });
         }
 
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
         $filter = $request->query('filter');
         if ($filter) {
             $today = \Carbon\Carbon::today()->toDateString();

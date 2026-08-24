@@ -11,6 +11,8 @@ class UcBookingController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
         $query = UcBooking::query()->with('driver')->orderBy('id', 'desc');
 
         if ($search) {
@@ -19,6 +21,14 @@ class UcBookingController extends Controller
                   ->orWhere('full_name', 'like', "%{$search}%")
                   ->orWhere('whatsapp', 'like', "%{$search}%");
             });
+        }
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
         }
 
         if ($request->has('page')) {

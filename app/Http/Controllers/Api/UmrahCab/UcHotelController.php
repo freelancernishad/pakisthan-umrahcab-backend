@@ -49,6 +49,23 @@ class UcHotelController extends Controller
             $query->where('customer_id', $customerId);
         }
 
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        if ($startDate) {
+            $query->where(function($q) use ($startDate) {
+                $q->where('check_in', '>=', $startDate)
+                  ->orWhereDate('created_at', '>=', $startDate);
+            });
+        }
+
+        if ($endDate) {
+            $query->where(function($q) use ($endDate) {
+                $q->where('check_in', '<=', $endDate)
+                  ->orWhereDate('created_at', '<=', $endDate);
+            });
+        }
+
         return response()->json($query->get());
     }
 

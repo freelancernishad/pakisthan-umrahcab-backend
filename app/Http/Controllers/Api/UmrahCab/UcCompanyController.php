@@ -35,21 +35,7 @@ class UcCompanyController extends Controller
             'price_group' => 'nullable|string',
         ]);
 
-        if (isset($validated['logo_path']) && preg_match('/^data:image\/(\w+);base64,/', $validated['logo_path'], $type)) {
-            $data = substr($validated['logo_path'], strpos($validated['logo_path'], ',') + 1);
-            $type = strtolower($type[1]); // jpg, png, gif, webp
-
-            if (in_array($type, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                $data = base64_decode($data);
-                $fileName = 'logo_' . time() . '.' . $type;
-                $uploadPath = public_path('uploads');
-                if (!file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-                file_put_contents($uploadPath . '/' . $fileName, $data);
-                $validated['logo_path'] = 'uploads/' . $fileName;
-            }
-        }
+        $validated['logo_path'] = $this->processLogoBase64($validated['logo_path'] ?? null);
 
         if (!empty($validated['agent_password'])) {
             $validated['agent_password'] = bcrypt($validated['agent_password']);
@@ -102,19 +88,13 @@ class UcCompanyController extends Controller
             'price_group' => 'nullable|string',
         ]);
 
-        if (isset($validated['logo_path']) && preg_match('/^data:image\/(\w+);base64,/', $validated['logo_path'], $type)) {
-            $data = substr($validated['logo_path'], strpos($validated['logo_path'], ',') + 1);
-            $type = strtolower($type[1]); // jpg, png, gif, webp
-
-            if (in_array($type, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
-                $data = base64_decode($data);
-                $fileName = 'logo_' . time() . '.' . $type;
-                $uploadPath = public_path('uploads');
-                if (!file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                }
-                file_put_contents($uploadPath . '/' . $fileName, $data);
-                $validated['logo_path'] = 'uploads/' . $fileName;
+        if (array_key_exists('logo_path', $validated)) {
+            $processedLogo = $this->processLogoBase64($validated['logo_path']);
+            if (!empty($processedLogo)) {
+                $validated['logo_path'] = $processedLogo;
+            } elseif (empty($validated['logo_path']) && !empty($company->logo_path)) {
+                // Do not overwrite existing valid logo_path with empty string
+                unset($validated['logo_path']);
             }
         }
 
@@ -131,6 +111,56 @@ class UcCompanyController extends Controller
             'message' => 'Company updated successfully!',
             'data' => $company
         ]);
+    }
+
+    /**
+     * Decode base64 logo string and save to public/uploads directory
+     */
+    private function processLogoBase64(?string $logoPath): ?string
+    {
+        if (empty($logoPath) || !is_string($logoPath)) {
+            return null;
+        }
+
+        $trimmed = trim($logoPath);
+        if (empty($trimmed)) {
+            return null;
+        }
+
+        // If it's already a relative path or http URL (not base64), return as is
+        if (!str_starts_with($trimmed, 'data:')) {
+            return $trimmed;
+        }
+
+        // Extract mime type and base64 string
+        $ext = 'png';
+        if (preg_match('/^data:image\/([^;]+);base64,/i', $trimmed, $matches)) {
+            $rawMime = strtolower($matches[1]);
+            if (str_contains($rawMime, 'jpeg') || str_contains($rawMime, 'jpg')) {
+                $ext = 'jpg';
+            } elseif (str_contains($rawMime, 'webp')) {
+                $ext = 'webp';
+            } elseif (str_contains($rawMime, 'gif')) {
+                $ext = 'gif';
+            } elseif (str_contains($rawMime, 'svg')) {
+                $ext = 'svg';
+            }
+        }
+
+        $base64Data = substr($trimmed, strpos($trimmed, ',') + 1);
+        $data = base64_decode($base64Data);
+        if ($data === false || empty($data)) {
+            return null;
+        }
+
+        $fileName = 'logo_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+        $uploadPath = public_path('uploads');
+        if (!file_exists($uploadPath)) {
+            mkdir($uploadPath, 0777, true);
+        }
+
+        file_put_contents($uploadPath . '/' . $fileName, $data);
+        return 'uploads/' . $fileName;
     }
 
     public function show($id)

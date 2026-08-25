@@ -572,12 +572,44 @@ class CompanyPanelController extends Controller
             $data = base64_decode($base64Data);
             if ($data !== false && !empty($data)) {
                 $fileName = 'logo_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
-                $uploadPath = public_path('uploads');
-                if (!file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
+
+                // Check if AWS S3 is configured, upload to S3; otherwise save to local uploads with cPanel/public_html sync
+                if (config('filesystems.disks.s3.key') && config('filesystems.disks.s3.secret') && config('filesystems.disks.s3.bucket')) {
+                    $s3Path = 'logos/' . $fileName;
+                    \Illuminate\Support\Facades\Storage::disk('s3')->put($s3Path, $data, 'public');
+                    $logoPath = \Illuminate\Support\Facades\Storage::disk('s3')->url($s3Path);
+                } else {
+                    $uploadDir = public_path('uploads');
+                    if (!file_exists($uploadDir)) {
+                        @mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $fullPath = $uploadDir . '/' . $fileName;
+                    file_put_contents($fullPath, $data);
+                    @chmod($fullPath, 0644);
+
+                    // cPanel / Shared hosting sync: if DOCUMENT_ROOT or public_html is different from public_path
+                    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : null;
+                    if ($docRoot && realpath($docRoot) !== realpath(public_path())) {
+                        $docRootTarget = $docRoot . '/uploads';
+                        if (!file_exists($docRootTarget)) {
+                            @mkdir($docRootTarget, 0755, true);
+                        }
+                        @copy($fullPath, $docRootTarget . '/' . $fileName);
+                        @chmod($docRootTarget . '/' . $fileName, 0644);
+                    }
+
+                    $publicHtmlDir = base_path('public_html/uploads');
+                    if (file_exists(base_path('public_html')) && realpath(base_path('public_html')) !== realpath(public_path())) {
+                        if (!file_exists($publicHtmlDir)) {
+                            @mkdir($publicHtmlDir, 0755, true);
+                        }
+                        @copy($fullPath, $publicHtmlDir . '/' . $fileName);
+                        @chmod($publicHtmlDir . '/' . $fileName, 0644);
+                    }
+
+                    $logoPath = 'uploads/' . $fileName;
                 }
-                file_put_contents($uploadPath . '/' . $fileName, $data);
-                $logoPath = 'uploads/' . $fileName;
             }
         }
 

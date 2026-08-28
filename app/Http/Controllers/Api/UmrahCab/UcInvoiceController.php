@@ -209,10 +209,23 @@ class UcInvoiceController extends Controller
             $totalBalanceDue = $savedBalance > 0 ? $savedBalance : (float)($prevBalance + $cycleSubtotal - $cyclePaymentsSum);
         }
 
+        $companyObj = \App\Models\UmrahCab\UcCompany::where('name', $company)
+            ->orWhere('name', 'like', "%{$company}%")
+            ->first();
+
+        $invoiceData = $invoice->toArray();
+        $invoiceData['company'] = [
+            'name' => $companyObj?->name ?? $company,
+            'address' => $companyObj?->address ?? 'Saudi Arabia',
+            'phone' => $companyObj?->phone ?? '',
+            'email' => $companyObj?->email ?? '',
+            'whatsapp' => $companyObj?->phone ?? '',
+        ];
+
         return response()->json([
             'success' => true,
             'data' => [
-                'invoice' => $invoice,
+                'invoice' => $invoiceData,
                 'breakdown' => [
                     'prev_balance' => (float)$prevBalance,
                     'bookings' => $bookings,

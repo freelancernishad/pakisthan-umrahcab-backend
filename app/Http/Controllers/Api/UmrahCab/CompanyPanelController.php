@@ -195,9 +195,145 @@ class CompanyPanelController extends Controller
         }
 
         $customerIds = UcCustomer::where('company', $company->name)->pluck('id');
-        $query = UcInvoice::whereIn('customer_id', $customerIds)->orderBy('id', 'desc');
+        $query = UcInvoice::where(function ($q) use ($customerIds, $company) {
+            $q->whereIn('customer_id', $customerIds)
+              ->orWhere('customer', $company->name);
+        })->orderBy('id', 'desc');
 
-        return response()->json($query->get());
+        return response()->json([
+            'invoices' => $query->get(),
+            'company_info' => [
+                'id' => $company->id,
+                'name' => $company->name,
+                'invoice_allowed' => (bool)$company->invoice,
+            ]
+        ]);
+    }
+
+    public function calculateInvoice(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date',
+            'type' => 'nullable|string',
+        ]);
+
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+        $customerIds = UcCustomer::where('company', $company->name)->pluck('id');
+
+        $bookings = \DB::table('uc_bookings')
+            ->whereIn('customer_id', $customerIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', '!=', 'Cancelled')
+            ->get();
+
+        $services = \DB::table('uc_services')
+            ->whereIn('customer_id', $customerIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', '!=', 'Cancelled')
+            ->get();
+
+        $payments = \DB::table('uc_payments')
+            ->where('company', $company->name)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get();
+
+        $cycleBookingsSum = (float)$bookings->sum('car_price');
+        $cycleServicesSum = (float)$services->sum('base_price');
+        $cyclePaymentsSum = (float)$payments->sum('amount');
+        $cycleSubtotal = $cycleBookingsSum + $cycleServicesSum;
+        $totalBalanceDue = max(0, $cycleSubtotal - $cyclePaymentsSum);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'company' => $company->name,
+                'invoice_allowed' => (bool)$company->invoice,
+                'period' => "{$startDate} to {$endDate}",
+                'bookings_count' => $bookings->count(),
+                'bookings_sum' => $cycleBookingsSum,
+                'services_count' => $services->count(),
+                'services_sum' => $cycleServicesSum,
+                'payments_sum' => $cyclePaymentsSum,
+                'subtotal' => $cycleSubtotal,
+                'balance_due' => $totalBalanceDue,
+            ]
+        ]);
+    }
+
+    public function createInvoice(Request $request)
+    {
+        $company = $this->getCompany();
+        if (!$company) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        if (!$company->invoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invoice creation is not allowed for your account. Please contact admin to enable invoice creation permission.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date',
+            'type' => 'nullable|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        $startDate = $validated['start_date'];
+        $endDate = $validated['end_date'];
+        $customerIds = UcCustomer::where('company', $company->name)->pluck('id');
+        $primaryCustomerId = $customerIds->first();
+
+        $bookingsSum = (float)\DB::table('uc_bookings')
+            ->whereIn('customer_id', $customerIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', '!=', 'Cancelled')
+            ->sum('car_price');
+
+        $servicesSum = (float)\DB::table('uc_services')
+            ->whereIn('customer_id', $customerIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', '!=', 'Cancelled')
+            ->sum('base_price');
+
+        $paymentsSum = (float)\DB::table('uc_payments')
+            ->where('company', $company->name)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $subtotal = $bookingsSum + $servicesSum;
+        $balance = max(0, $subtotal - $paymentsSum);
+
+        $invoiceCode = 'INV-2026-' . sprintf('%03d', UcInvoice::count() + 3);
+
+        $invoice = UcInvoice::create([
+            'customer_id' => $primaryCustomerId,
+            'invoice_code' => $invoiceCode,
+            'customer' => $company->name,
+            'date' => date('Y-m-d'),
+            'period' => "{$startDate} to {$endDate}",
+            'amount' => $subtotal,
+            'balance' => $balance,
+            'status' => $balance <= 0 ? 'Paid' : 'Unpaid',
+            'type' => $validated['type'] ?? 'VW',
+            'remarks' => $validated['remarks'] ?? 'Generated from Agent Panel',
+            'entered_by' => 'Agent: ' . $company->name,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice generated successfully!',
+            'data' => $invoice
+        ], 201);
     }
 
     public function ledgers(Request $request)

@@ -165,6 +165,19 @@ class UcPaymentController extends Controller
                 } else {
                     $payment->proof_details = trim(($payment->proof_details ?? '') . "\n[Loan Due Repayment Received (Full): SAR " . number_format($payment->amount, 2) . " for Loan " . ($payment->transaction_ref ?? '') . "]");
                 }
+
+                // Also update the original loan entry if referenced
+                if ($payment->transaction_ref) {
+                    preg_match('/PAY-\d+/', $payment->transaction_ref, $matches);
+                    if (!empty($matches[0])) {
+                        $loanRef = $matches[0];
+                        $origLoan = UcPayment::where('custom_id', $loanRef)->first();
+                        if ($origLoan) {
+                            $origLoan->proof_details = trim(($origLoan->proof_details ?? '') . "\n[Loan Repayment Received: SAR " . number_format($payment->amount, 2) . " (Ref: " . ($payment->custom_id ?? ('PAY-'.$payment->id)) . ")]");
+                            $origLoan->save();
+                        }
+                    }
+                }
             } else {
                 // Normal Cash / Bank Transfer / Credit Card deposit approval:
                 if ($approvedAmount > 0 && $approvedAmount != $payment->amount) {

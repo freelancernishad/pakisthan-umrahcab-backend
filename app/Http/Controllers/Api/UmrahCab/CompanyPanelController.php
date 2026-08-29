@@ -205,7 +205,7 @@ class CompanyPanelController extends Controller
             'company_info' => [
                 'id' => $company->id,
                 'name' => $company->name,
-                'invoice_allowed' => (bool)$company->invoice,
+                'invoice_allowed' => is_null($company->invoice) ? true : (bool)$company->invoice,
             ]
         ]);
     }
@@ -254,7 +254,7 @@ class CompanyPanelController extends Controller
             'success' => true,
             'data' => [
                 'company' => $company->name,
-                'invoice_allowed' => (bool)$company->invoice,
+                'invoice_allowed' => is_null($company->invoice) ? true : (bool)$company->invoice,
                 'period' => "{$startDate} to {$endDate}",
                 'bookings_count' => $bookings->count(),
                 'bookings_sum' => $cycleBookingsSum,
@@ -274,7 +274,8 @@ class CompanyPanelController extends Controller
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if (!$company->invoice) {
+        $isAllowed = is_null($company->invoice) ? true : (bool)$company->invoice;
+        if (!$isAllowed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Invoice creation is not allowed for your account. Please contact admin to enable invoice creation permission.'
@@ -291,7 +292,7 @@ class CompanyPanelController extends Controller
         $startDate = $validated['start_date'];
         $endDate = $validated['end_date'];
         $customerIds = UcCustomer::where('company', $company->name)->pluck('id');
-        $primaryCustomerId = $customerIds->first();
+        $primaryCustomerId = $customerIds->first() ?: null;
 
         $bookingsSum = (float)\DB::table('uc_bookings')
             ->whereIn('customer_id', $customerIds)

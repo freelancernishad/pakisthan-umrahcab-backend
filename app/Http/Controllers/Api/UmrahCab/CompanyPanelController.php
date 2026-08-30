@@ -245,8 +245,9 @@ class CompanyPanelController extends Controller
             ->get();
 
         $cycleBookingsSum = (float)$bookings->sum('car_price');
+        $cycleBookingsReceivedSum = (float)$bookings->sum('received_amount');
         $cycleServicesSum = (float)$services->sum('base_price');
-        $cyclePaymentsSum = (float)$payments->sum('amount');
+        $cyclePaymentsSum = (float)$payments->sum('amount') + $cycleBookingsReceivedSum;
         $cycleSubtotal = $cycleBookingsSum + $cycleServicesSum;
         $totalBalanceDue = max(0, $cycleSubtotal - $cyclePaymentsSum);
 
@@ -300,6 +301,12 @@ class CompanyPanelController extends Controller
             ->where('status', '!=', 'Cancelled')
             ->sum('car_price');
 
+        $bookingsReceivedSum = (float)\DB::table('uc_bookings')
+            ->whereIn('customer_id', $customerIds)
+            ->whereBetween('date', [$startDate, $endDate])
+            ->where('status', '!=', 'Cancelled')
+            ->sum('received_amount');
+
         $servicesSum = (float)\DB::table('uc_services')
             ->whereIn('customer_id', $customerIds)
             ->whereBetween('date', [$startDate, $endDate])
@@ -309,7 +316,7 @@ class CompanyPanelController extends Controller
         $paymentsSum = (float)\DB::table('uc_payments')
             ->where('company', $company->name)
             ->whereBetween('date', [$startDate, $endDate])
-            ->sum('amount');
+            ->sum('amount') + $bookingsReceivedSum;
 
         $subtotal = $bookingsSum + $servicesSum;
         $balance = max(0, $subtotal - $paymentsSum);

@@ -13,11 +13,13 @@ class UcPriceListController extends Controller
     {
         $perPage = $request->query('per_page', 10);
         $search = $request->query('search', '');
-        $groupName = $request->query('group_name', 'Standard');
-
-        if (auth()->guard('company')->check()) {
+        if ($request->has('group_name') && !empty($request->query('group_name'))) {
+            $groupName = $request->query('group_name');
+        } elseif (auth()->guard('company')->check()) {
             $company = auth()->guard('company')->user();
             $groupName = $company->price_group ?? 'Standard';
+        } else {
+            $groupName = 'Standard';
         }
 
         // Always query the Standard routes as the base structure
@@ -374,7 +376,7 @@ class UcPriceListController extends Controller
 
     public function publicRates()
     {
-        $rates = UcPriceList::all();
+        $rates = UcPriceList::where('group_name', 'Standard')->get();
         return response()->json($rates);
     }
 }

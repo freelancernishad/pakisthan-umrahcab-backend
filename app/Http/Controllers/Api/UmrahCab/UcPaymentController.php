@@ -116,7 +116,9 @@ class UcPaymentController extends Controller
 
         $methodLower = strtolower($payment->method ?? '');
         $isLoanMethod = (strpos($methodLower, 'loan') !== false || strpos($methodLower, 'credit') !== false);
-        $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+        $isDuePayment = (strtolower($payment->method ?? '') === 'loan due') || 
+                         (strpos(strtolower($payment->method ?? ''), 'due') !== false) || 
+                         (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
                          (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
 
         $isNewCleared = in_array(strtolower($newStatus), ['approved', 'success', 'verified']);
@@ -191,7 +193,7 @@ class UcPaymentController extends Controller
         $payment->save();
 
         // Handle Ledger Credit / Revocation
-        if ($isNewCleared && !$isOldCleared) {
+        if ($isNewCleared && !$isOldCleared && !$isDuePayment) {
             // Prevent duplicate ledger entries for the same payment
             $paymentRef = $payment->custom_id ?? ('PAY-' . $payment->id);
             $existingLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)
@@ -203,11 +205,9 @@ class UcPaymentController extends Controller
                 $lastBalance = $lastLedger ? $lastLedger->balance : 0;
                 $newBalance = $lastBalance + $payment->amount;
 
-                $description = $isDuePayment
-                    ? 'Loan Due Repayment Received (Ref: ' . $paymentRef . ', Loan Ref: ' . ($payment->transaction_ref ?? 'Loan Due') . ', Amount Paid: SAR ' . number_format($payment->amount, 2) . ')'
-                    : ($isLoanMethod 
-                        ? 'Loan Credit Approved (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')'
-                        : 'Payment Cleared (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')');
+                $description = $isLoanMethod 
+                    ? 'Loan Credit Approved (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')'
+                    : 'Payment Cleared (Ref: ' . $paymentRef . ', Amount: SAR ' . number_format($payment->amount, 2) . ')';
 
                 \App\Models\UmrahCab\UcLedger::create([
                     'company' => $payment->company,
@@ -219,7 +219,7 @@ class UcPaymentController extends Controller
                     'balance' => $newBalance
                 ]);
             }
-        } elseif (!$isOldCleared && !$isNewCleared) {
+        } elseif ($isOldCleared && !$isNewCleared) {
             // Revoke credit: Debit the amount from the ledger (Admin Rejected/Cancelled after Approval)
             if (!$isDuePayment) {
                 $lastLedger = \App\Models\UmrahCab\UcLedger::where('company', $payment->company)->orderBy('id', 'desc')->first();
@@ -251,7 +251,9 @@ class UcPaymentController extends Controller
         
         // If the payment was approved and credited the ledger, revoke the credited amount
         $isCleared = in_array(strtolower($payment->status), ['approved', 'success', 'verified']);
-        $isDuePayment = (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
+        $isDuePayment = (strtolower($payment->method ?? '') === 'loan due') ||
+                         (strpos(strtolower($payment->method ?? ''), 'due') !== false) || 
+                         (strpos(strtolower($payment->transaction_ref ?? ''), 'due') !== false) || 
                          (strpos(strtolower($payment->proof_details ?? ''), 'no additional ledger credit') !== false);
 
         if ($isCleared && !$isDuePayment) {

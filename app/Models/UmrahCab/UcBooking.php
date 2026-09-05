@@ -27,6 +27,7 @@ class UcBooking extends Model
         'whatsapp',
         'flight_no',
         'notes',
+        'visa_type',
         'status',
         'payment_method',
         'received_amount',
